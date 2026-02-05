@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "514626583502",
+    "project_id": "avo-o-cac40",
+    "storage_bucket": "avo-o-cac40.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:514626583502:android:891278214d3faf2311c99f",
+        "android_client_info": {
+          "package_name": "com.avoo.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCU7f2B8ikBaFWfliapKBgea1HxLuzEbWc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
