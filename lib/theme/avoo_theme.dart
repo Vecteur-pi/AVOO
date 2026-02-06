@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AvooColors {
-  static const Color green = Color(0xFF195D38);
+  static const Color green = Color(0xFF5D8F42);
   static const Color navy = Color(0xFF0C1827);
   static const Color orange = Color(0xFFCA472C);
-  static const Color bone = Color(0xFFF7F7F6);
+  static const Color bone = Color(0xFFEAF1D5);
   static const Color ink = Color(0xFF101723);
   static const Color fog = Color(0xFFF0F1ED);
   static const Color line = Color(0xFFE2E4DE);
@@ -29,40 +29,40 @@ class AvooTheme {
       onBackground: AvooColors.ink,
     );
 
-    final textTheme = GoogleFonts.manropeTextTheme(base.textTheme).copyWith(
-      displayLarge: GoogleFonts.spaceGrotesk(
-        fontSize: 40,
-        fontWeight: FontWeight.w700,
-        color: AvooColors.navy,
+    final textTheme = GoogleFonts.nunitoTextTheme(base.textTheme).copyWith(
+      displayLarge: GoogleFonts.nunito(
+        fontSize: 34,
+        fontWeight: FontWeight.w800,
+        color: AvooColors.green,
       ),
-      displayMedium: GoogleFonts.spaceGrotesk(
-        fontSize: 32,
-        fontWeight: FontWeight.w700,
-        color: AvooColors.navy,
+      displayMedium: GoogleFonts.nunito(
+        fontSize: 26,
+        fontWeight: FontWeight.w800,
+        color: AvooColors.green,
       ),
-      titleLarge: GoogleFonts.spaceGrotesk(
-        fontSize: 24,
+      titleLarge: GoogleFonts.nunito(
+        fontSize: 22,
         fontWeight: FontWeight.w700,
-        color: AvooColors.navy,
+        color: AvooColors.green,
       ),
-      titleMedium: GoogleFonts.manrope(
+      titleMedium: GoogleFonts.nunito(
         fontSize: 16,
         fontWeight: FontWeight.w600,
         color: AvooColors.ink,
       ),
-      bodyLarge: GoogleFonts.manrope(
+      bodyLarge: GoogleFonts.nunito(
         fontSize: 16,
-        fontWeight: FontWeight.w500,
+        fontWeight: FontWeight.w600,
         color: AvooColors.ink,
       ),
-      bodyMedium: GoogleFonts.manrope(
-        fontSize: 14,
-        fontWeight: FontWeight.w500,
-        color: AvooColors.ink,
-      ),
-      labelLarge: GoogleFonts.manrope(
+      bodyMedium: GoogleFonts.nunito(
         fontSize: 14,
         fontWeight: FontWeight.w600,
+        color: AvooColors.ink,
+      ),
+      labelLarge: GoogleFonts.nunito(
+        fontSize: 14,
+        fontWeight: FontWeight.w700,
         letterSpacing: 0.4,
       ),
     );
@@ -71,65 +71,6 @@ class AvooTheme {
       colorScheme: colorScheme,
       textTheme: textTheme,
       scaffoldBackgroundColor: AvooColors.bone,
-      cardTheme: const CardThemeData(
-        color: Colors.white,
-        elevation: 0,
-        margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(20)),
-        ),
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: Colors.white,
-        hintStyle: textTheme.bodyMedium?.copyWith(
-          color: AvooColors.navy.withOpacity(0.5),
-        ),
-        labelStyle: textTheme.bodyMedium?.copyWith(color: AvooColors.navy),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: AvooColors.line),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: AvooColors.line),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: AvooColors.green, width: 1.6),
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 16,
-        ),
-      ),
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AvooColors.green,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          textStyle: textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AvooColors.navy,
-          side: const BorderSide(color: AvooColors.line),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          textStyle: textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
     );
   }
 }

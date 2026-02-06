@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import '../theme/avoo_theme.dart';
@@ -13,354 +11,253 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
-  bool _rememberMe = true;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final content = _LoginBody(
-            obscurePassword: _obscurePassword,
-            rememberMe: _rememberMe,
-            onTogglePassword: () {
-              setState(() {
-                _obscurePassword = !_obscurePassword;
-              });
-            },
-            onToggleRemember: (value) {
-              setState(() {
-                _rememberMe = value ?? true;
-              });
-            },
-          );
-
-          if (constraints.maxWidth >= 700) {
-            return Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: content,
-              ),
-            );
-          }
-          return content;
-        },
-      ),
-    );
-  }
-}
-
-class _LoginBody extends StatelessWidget {
-  const _LoginBody({
-    required this.obscurePassword,
-    required this.rememberMe,
-    required this.onTogglePassword,
-    required this.onToggleRemember,
-  });
-
-  final bool obscurePassword;
-  final bool rememberMe;
-  final VoidCallback onTogglePassword;
-  final ValueChanged<bool?> onToggleRemember;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final heroHeight = math.min(
-          320.0,
-          math.max(240.0, constraints.maxHeight * 0.36),
-        );
-        final sheetMinHeight = math.max(
-          0.0,
-          constraints.maxHeight - heroHeight,
-        );
-
-        return SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Column(
-            children: [
-              SizedBox(height: heroHeight, child: const _LeafHero()),
-              Container(
-                constraints: BoxConstraints(minHeight: sheetMinHeight),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(36)),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 32, 24, 28),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Welcome Back',
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.displayMedium,
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  'Login to your account',
-                                  style: Theme.of(context).textTheme.bodyMedium
-                                      ?.copyWith(
-                                        color: AvooColors.navy.withOpacity(0.6),
-                                      ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const _LeafBadge(),
-                        ],
+      backgroundColor: AvooColors.bone,
+      body: Stack(
+        children: [
+          const _PatternBackground(),
+          SafeArea(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 6),
+                  const _LogoRow(),
+                  const SizedBox(height: 20),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: const [
+                      Expanded(child: _WelcomeText()),
+                      SizedBox(width: 8),
+                      _WaiterBadge(),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  const _SoftField(label: 'Email', icon: Icons.mail_outline),
+                  const SizedBox(height: 14),
+                  _SoftField(
+                    label: 'Mot de passe',
+                    icon: Icons.lock_outline,
+                    obscureText: _obscurePassword,
+                    suffix: IconButton(
+                      onPressed: () {
+                        setState(() {
+                          _obscurePassword = !_obscurePassword;
+                        });
+                      },
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility
+                            : Icons.visibility_off,
+                        size: 20,
                       ),
-                      const SizedBox(height: 24),
-                      _SoftField(
-                        label: 'Full Name',
-                        icon: Icons.person_outline,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () {},
+                      style: TextButton.styleFrom(
+                        foregroundColor: AvooColors.green,
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
                       ),
-                      const SizedBox(height: 14),
-                      _SoftField(
-                        label: 'Password',
-                        icon: Icons.lock_outline,
-                        obscureText: obscurePassword,
-                        suffix: IconButton(
-                          onPressed: onTogglePassword,
-                          icon: Icon(
-                            obscurePassword
-                                ? Icons.visibility
-                                : Icons.visibility_off,
-                            size: 20,
-                          ),
+                      child: const Text(
+                        'Mot de passe oublié ?',
+                        style: TextStyle(decoration: TextDecoration.underline),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 54,
+                    child: ElevatedButton(
+                      onPressed: () {},
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AvooColors.green,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
                         ),
+                        elevation: 6,
+                        shadowColor: AvooColors.green.withOpacity(0.35),
                       ),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Checkbox(
-                            value: rememberMe,
-                            activeColor: AvooColors.green,
-                            onChanged: onToggleRemember,
-                          ),
-                          Text(
-                            'Remember me',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                          const Spacer(),
-                          TextButton(
-                            onPressed: () {},
-                            child: const Text('Forget Password ?'),
-                          ),
-                        ],
+                      child: const Text(
+                        'SE CONNECTER',
+                        style: TextStyle(letterSpacing: 0.6),
                       ),
-                      const SizedBox(height: 14),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 52,
-                        child: ElevatedButton(
-                          onPressed: () {},
-                          style: ElevatedButton.styleFrom(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(26),
-                            ),
-                          ),
-                          child: const Text('Login'),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Center(
+                    child: RichText(
+                      text: TextSpan(
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AvooColors.navy.withOpacity(0.7),
                         ),
-                      ),
-                      const SizedBox(height: 18),
-                      Row(
-                        children: [
-                          const Expanded(child: Divider()),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            child: Text(
-                              'Or continue with',
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    color: AvooColors.navy.withOpacity(0.5),
-                                  ),
-                            ),
-                          ),
-                          const Expanded(child: Divider()),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
                         children: const [
-                          _SocialChip(icon: Icons.facebook),
-                          SizedBox(width: 14),
-                          _SocialChip(icon: Icons.g_mobiledata_rounded),
-                          SizedBox(width: 14),
-                          _SocialChip(icon: Icons.apple),
+                          TextSpan(text: 'Pas encore de compte ? '),
+                          TextSpan(
+                            text: "S'inscrire",
+                            style: TextStyle(
+                              decoration: TextDecoration.underline,
+                              color: AvooColors.green,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ],
                       ),
-                      const SizedBox(height: 22),
-                      Center(
-                        child: RichText(
-                          text: TextSpan(
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                                  color: AvooColors.navy.withOpacity(0.6),
-                                ),
-                            children: const [
-                              TextSpan(text: "Don't have an account? "),
-                              TextSpan(
-                                text: 'Sign up',
-                                style: TextStyle(
-                                  color: AvooColors.green,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  Row(
+                    children: const [
+                      Expanded(
+                        child: _SocialButton(
+                          label: 'Continuer avec Google',
+                          icon: _GoogleGlyph(),
+                        ),
+                      ),
+                      SizedBox(width: 16),
+                      Expanded(
+                        child: _SocialButton(
+                          label: 'Continuer avec Apple',
+                          icon: Icon(Icons.apple, size: 20),
                         ),
                       ),
                     ],
                   ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _LeafHero extends StatelessWidget {
-  const _LeafHero();
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF0E2418), Color(0xFF1E3E2B), Color(0xFF264A35)],
-            ),
-          ),
-        ),
-        const _LeafTexture(),
-        Align(
-          alignment: Alignment.topLeft,
-          child: Padding(
-            padding: const EdgeInsets.only(top: 18, left: 16),
-            child: CircleAvatar(
-              radius: 18,
-              backgroundColor: Colors.white.withOpacity(0.75),
-              child: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                size: 16,
-                color: AvooColors.navy,
+                  const SizedBox(height: 24),
+                ],
               ),
             ),
           ),
-        ),
-        Positioned(
-          bottom: 28,
-          right: 26,
-          child: Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: AvooColors.orange.withOpacity(0.9),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: AvooColors.orange.withOpacity(0.35),
-                  blurRadius: 22,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
 
-class _LeafTexture extends StatelessWidget {
-  const _LeafTexture();
+class _PatternBackground extends StatelessWidget {
+  const _PatternBackground();
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: const [
-        _LeafBlob(
-          offset: Offset(-40, -20),
-          size: 220,
-          color: Color(0xFF1B3A28),
-        ),
-        _LeafBlob(
-          offset: Offset(140, -40),
-          size: 260,
-          color: Color(0xFF173321),
-        ),
-        _LeafBlob(offset: Offset(40, 40), size: 200, color: Color(0xFF21422F)),
-        _LeafBlob(offset: Offset(220, 60), size: 180, color: Color(0xFF2C5A40)),
-      ],
-    );
-  }
-}
-
-class _LeafBlob extends StatelessWidget {
-  const _LeafBlob({
-    required this.offset,
-    required this.size,
-    required this.color,
-  });
-
-  final Offset offset;
-  final double size;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned(
-      left: offset.dx,
-      top: offset.dy,
-      child: Container(
-        width: size,
-        height: size * 0.78,
+    return Positioned.fill(
+      child: DecoratedBox(
         decoration: BoxDecoration(
-          color: color.withOpacity(0.9),
-          borderRadius: BorderRadius.circular(120),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.15),
-              blurRadius: 30,
-              offset: const Offset(0, 12),
+          color: AvooColors.bone,
+          image: DecorationImage(
+            image: const AssetImage('assets/images/pattern.jpg'),
+            fit: BoxFit.cover,
+            colorFilter: ColorFilter.mode(
+              AvooColors.bone.withOpacity(0.72),
+              BlendMode.lighten,
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _LeafBadge extends StatelessWidget {
-  const _LeafBadge();
+class _LogoRow extends StatelessWidget {
+  const _LogoRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: const [
+        _AvocadoMark(),
+        SizedBox(width: 10),
+        Text(
+          "Avo'o",
+          style: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.w800,
+            color: AvooColors.green,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AvocadoMark extends StatelessWidget {
+  const _AvocadoMark();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 54,
-      height: 54,
+      width: 36,
+      height: 44,
       decoration: BoxDecoration(
-        color: AvooColors.green.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(18),
+        color: const Color(0xFF8BC868),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFF5A8A3D), width: 2),
       ),
-      child: const Icon(Icons.eco, color: AvooColors.green),
+      child: Center(
+        child: Container(
+          width: 16,
+          height: 16,
+          decoration: const BoxDecoration(
+            color: Color(0xFFB7743A),
+            shape: BoxShape.circle,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _WelcomeText extends StatelessWidget {
+  const _WelcomeText();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Bienvenue !',
+          style: Theme.of(
+            context,
+          ).textTheme.displayMedium?.copyWith(color: AvooColors.green),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Connectez-vous pour continuer',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: AvooColors.navy.withOpacity(0.6),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _WaiterBadge extends StatelessWidget {
+  const _WaiterBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 86,
+      height: 86,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          widthFactor: 0.35,
+          child: Image.asset('assets/images/avoo_logo.png', fit: BoxFit.cover),
+        ),
+      ),
     );
   }
 }
@@ -383,47 +280,101 @@ class _SoftField extends StatelessWidget {
     return TextFormField(
       obscureText: obscureText,
       decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, size: 20),
+        hintText: label,
+        prefixIcon: Icon(icon, color: AvooColors.green),
         suffixIcon: suffix,
         filled: true,
-        fillColor: const Color(0xFFE9EFE7),
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 18,
+          vertical: 16,
+        ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(30),
+          borderSide: const BorderSide(color: Color(0xFFDDE6C2), width: 1.2),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(color: AvooColors.green, width: 1.3),
+          borderRadius: BorderRadius.circular(30),
+          borderSide: const BorderSide(color: AvooColors.green, width: 1.4),
         ),
       ),
     );
   }
 }
 
-class _SocialChip extends StatelessWidget {
-  const _SocialChip({required this.icon});
+class _SocialButton extends StatelessWidget {
+  const _SocialButton({required this.label, required this.icon});
 
-  final IconData icon;
+  final String label;
+  final Widget icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final showLabel = constraints.maxWidth >= 170;
+        return Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 12,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              icon,
+              if (showLabel) ...[
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    label,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF2E2E2E),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _GoogleGlyph extends StatelessWidget {
+  const _GoogleGlyph();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 46,
-      height: 46,
+      width: 20,
+      height: 20,
+      alignment: Alignment.center,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AvooColors.line),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x140C1827),
-            blurRadius: 16,
-            offset: Offset(0, 6),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: const Color(0xFFE0E0E0)),
       ),
-      child: Icon(icon, color: AvooColors.navy),
+      child: const Text(
+        'G',
+        style: TextStyle(
+          fontWeight: FontWeight.w800,
+          color: Color(0xFF2E2E2E),
+          fontSize: 12,
+        ),
+      ),
     );
   }
 }
