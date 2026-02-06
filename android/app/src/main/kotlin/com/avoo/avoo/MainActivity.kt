@@ -1,4 +1,4 @@
-package com.avoo.app
+package com.avoo.avoo
 
 import io.flutter.embedding.android.FlutterActivity
 
