@@ -119,22 +119,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 22),
-                  Row(
-                    children: const [
-                      Expanded(
-                        child: _SocialButton(
-                          label: 'Continuer avec Google',
-                          icon: _GoogleGlyph(),
-                        ),
-                      ),
-                      SizedBox(width: 16),
-                      Expanded(
-                        child: _SocialButton(
-                          label: 'Continuer avec Apple',
-                          icon: Icon(Icons.apple, size: 20),
-                        ),
-                      ),
-                    ],
+                  const _SocialButton(
+                    label: 'Continuer avec Google',
+                    icon: _GoogleGlyph(),
                   ),
                   const SizedBox(height: 24),
                 ],
@@ -153,16 +140,15 @@ class _PatternBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Positioned.fill(
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: AvooColors.bone,
-          image: DecorationImage(
-            image: const AssetImage('assets/images/pattern.jpg'),
-            fit: BoxFit.cover,
-            colorFilter: ColorFilter.mode(
-              AvooColors.bone.withOpacity(0.72),
-              BlendMode.lighten,
-            ),
+      child: Container(
+        color: AvooColors.bone,
+        child: Opacity(
+          opacity: 0.18,
+          child: Image.asset(
+            'assets/images/pattern.jpg',
+            fit: BoxFit.none,
+            repeat: ImageRepeat.repeat,
+            alignment: Alignment.topLeft,
           ),
         ),
       ),
