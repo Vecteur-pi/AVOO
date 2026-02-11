@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../theme/avoo_theme.dart';
+import '../registration/ui/registration_flow_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -59,6 +60,12 @@ class _LoginScreenState extends State<LoginScreen> {
         });
       }
     }
+  }
+
+  void _goToRegistration() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const RegistrationFlowScreen()),
+    );
   }
 
   String _mapAuthError(FirebaseAuthException error) {
@@ -210,23 +217,30 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 18),
                     Center(
-                      child: RichText(
-                        text: TextSpan(
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AvooColors.navy.withOpacity(0.7),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Pas encore de compte ? ',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: AvooColors.navy.withOpacity(0.7),
+                            ),
                           ),
-                          children: const [
-                            TextSpan(text: 'Pas encore de compte ? '),
-                            TextSpan(
-                              text: "S'inscrire",
+                          TextButton(
+                            onPressed: _isLoading ? null : _goToRegistration,
+                            style: TextButton.styleFrom(
+                              foregroundColor: AvooColors.green,
+                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                            ),
+                            child: const Text(
+                              "S'inscrire",
                               style: TextStyle(
                                 decoration: TextDecoration.underline,
-                                color: AvooColors.green,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 22),
