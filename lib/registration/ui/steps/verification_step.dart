@@ -95,7 +95,7 @@ class VerificationStep extends StatelessWidget {
             textInputAction: TextInputAction.done,
             validator: RegistrationValidators.verificationCode,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            helperText: 'Utilisez 123456 pour la maquette.',
+            helperText: 'Entrez le code reçu par e-mail ou SMS.',
           ),
           if (controller.verificationError != null) ...[
             const SizedBox(height: 8),
