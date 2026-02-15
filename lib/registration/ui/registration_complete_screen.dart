@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
+import '../services/registration_debug_state.dart';
 import '../../theme/avoo_theme.dart';
 import 'widgets/registration_background.dart';
 
@@ -49,8 +51,8 @@ class RegistrationCompleteScreen extends StatelessWidget {
                       'Votre restaurant est prêt à être configuré.\nConnectez-vous pour continuer.',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AvooColors.navy.withOpacity(0.7),
-                          ),
+                        color: AvooColors.navy.withOpacity(0.7),
+                      ),
                     ),
                     const SizedBox(height: 24),
                     SizedBox(
@@ -58,10 +60,13 @@ class RegistrationCompleteScreen extends StatelessWidget {
                       height: 50,
                       child: ElevatedButton(
                         onPressed: () {
-                          Navigator.of(context).popUntil((route) => route.isFirst);
+                          Navigator.of(
+                            context,
+                          ).popUntil((route) => route.isFirst);
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AvooColors.green,
+                          foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(28),
                           ),
@@ -69,6 +74,17 @@ class RegistrationCompleteScreen extends StatelessWidget {
                         child: const Text('Aller à la connexion'),
                       ),
                     ),
+                    if (kDebugMode &&
+                        RegistrationDebugState.lastCreatedUid != null) ...[
+                      const SizedBox(height: 14),
+                      Text(
+                        'Debug Firebase\nProject: ${RegistrationDebugState.lastProjectId ?? '-'}\nUID: ${RegistrationDebugState.lastCreatedUid}\nRestaurant: ${RegistrationDebugState.lastRestaurantId ?? '-'}',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AvooColors.navy.withOpacity(0.55),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

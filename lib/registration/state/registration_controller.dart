@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../config/app_flags.dart';
 import '../models/personal_info.dart';
 import '../models/registration_payload.dart';
 import '../models/restaurant_info.dart';
@@ -209,7 +210,8 @@ class RegistrationController extends ChangeNotifier {
         RegistrationValidators.email(emailController.text) == null &&
         RegistrationValidators.phone(phoneController.text) == null &&
         RegistrationValidators.password(passwordController.text) == null &&
-        RegistrationValidators.countryCity(countryCityController.text) == null &&
+        RegistrationValidators.countryCity(countryCityController.text) ==
+            null &&
         RegistrationValidators.currency(currency) == null &&
         emailUniqueError == null &&
         phoneUniqueError == null &&
@@ -217,13 +219,17 @@ class RegistrationController extends ChangeNotifier {
   }
 
   bool get canProceedStep2 {
-    return RegistrationValidators.restaurantName(restaurantNameController.text) ==
+    return RegistrationValidators.restaurantName(
+              restaurantNameController.text,
+            ) ==
             null &&
         RegistrationValidators.restaurantAddress(
               restaurantAddressController.text,
             ) ==
             null &&
-        RegistrationValidators.restaurantPhone(restaurantPhoneController.text) ==
+        RegistrationValidators.restaurantPhone(
+              restaurantPhoneController.text,
+            ) ==
             null &&
         RegistrationValidators.tablesCount(
               tablesCountController.text,
@@ -233,12 +239,13 @@ class RegistrationController extends ChangeNotifier {
   }
 
   bool get canSubmit {
-    return RegistrationValidators.verificationCode(
+    final codeIsValid =
+        AppFlags.bypassOtp ||
+        RegistrationValidators.verificationCode(
               verificationCodeController.text,
             ) ==
-            null &&
-        !isVerifying &&
-        !isSubmitting;
+            null;
+    return codeIsValid && !isVerifying && !isSubmitting;
   }
 
   void updateCurrency(String value) {
@@ -320,6 +327,13 @@ class RegistrationController extends ChangeNotifier {
     if (isSendingCode || resendSeconds > 0) {
       return;
     }
+    if (AppFlags.bypassOtp) {
+      verificationError = null;
+      verificationSent = true;
+      _startResendTimer();
+      _notify();
+      return;
+    }
     isSendingCode = true;
     verificationError = null;
     _notify();
@@ -348,38 +362,40 @@ class RegistrationController extends ChangeNotifier {
     submitError = null;
     verificationError = null;
     final form = formKeyStep3.currentState;
-    if (form == null || !form.validate()) {
+    if (!AppFlags.bypassOtp && (form == null || !form.validate())) {
       return false;
     }
 
-    isVerifying = true;
-    _notify();
+    if (!AppFlags.bypassOtp) {
+      isVerifying = true;
+      _notify();
 
-    try {
-      if (verificationMethod == VerificationMethod.email) {
-        await repository.verifyEmailCode(
-          emailController.text.trim(),
-          verificationCodeController.text.trim(),
-        );
-      } else {
-        await repository.verifyPhoneCode(
-          RegistrationValidators.normalizePhone(phoneController.text),
-          verificationCodeController.text.trim(),
-        );
+      try {
+        if (verificationMethod == VerificationMethod.email) {
+          await repository.verifyEmailCode(
+            emailController.text.trim(),
+            verificationCodeController.text.trim(),
+          );
+        } else {
+          await repository.verifyPhoneCode(
+            RegistrationValidators.normalizePhone(phoneController.text),
+            verificationCodeController.text.trim(),
+          );
+        }
+      } on RegistrationException catch (error) {
+        verificationError = error.message;
+        isVerifying = false;
+        _notify();
+        return false;
+      } catch (_) {
+        verificationError = 'Vérification impossible.';
+        isVerifying = false;
+        _notify();
+        return false;
       }
-    } on RegistrationException catch (error) {
-      verificationError = error.message;
-      isVerifying = false;
-      _notify();
-      return false;
-    } catch (_) {
-      verificationError = 'Vérification impossible.';
-      isVerifying = false;
-      _notify();
-      return false;
-    }
 
-    isVerifying = false;
+      isVerifying = false;
+    }
     isSubmitting = true;
     _notify();
 

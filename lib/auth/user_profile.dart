@@ -29,8 +29,29 @@ class UserProfileService {
       db.collection('users').doc(user.uid),
       onPermissionDenied: markPermissionDenied,
     );
-    final restaurantId = _readRestaurantId(direct?.data());
+    final directData = direct?.data();
+    final restaurantId = _readRestaurantId(directData);
+    final directRole = _readString(
+      directData ?? const <String, dynamic>{},
+      const ['role', 'type', 'position'],
+      fallback: '',
+    );
+    final directName = _readString(
+      directData ?? const <String, dynamic>{},
+      const ['name', 'displayName', 'display_name', 'fullName'],
+      fallback: '',
+    );
     if (restaurantId != null && restaurantId.isNotEmpty) {
+      if (isOwnerRole(directRole) && direct != null && direct.exists) {
+        return _fromDoc(
+          user,
+          direct,
+          restaurantId: restaurantId,
+          fallbackRole: directRole,
+          fallbackName: directName,
+        );
+      }
+
       final member = await _tryDoc(
         db
             .collection('restaurants')
@@ -40,7 +61,13 @@ class UserProfileService {
         onPermissionDenied: markPermissionDenied,
       );
       if (member != null && member.exists) {
-        return _fromDoc(user, member, restaurantId: restaurantId);
+        return _fromDoc(
+          user,
+          member,
+          restaurantId: restaurantId,
+          fallbackRole: directRole,
+          fallbackName: directName,
+        );
       }
 
       final restUser = await _tryDoc(
@@ -52,7 +79,23 @@ class UserProfileService {
         onPermissionDenied: markPermissionDenied,
       );
       if (restUser != null && restUser.exists) {
-        return _fromDoc(user, restUser, restaurantId: restaurantId);
+        return _fromDoc(
+          user,
+          restUser,
+          restaurantId: restaurantId,
+          fallbackRole: directRole,
+          fallbackName: directName,
+        );
+      }
+
+      if (direct != null && direct.exists) {
+        return _fromDoc(
+          user,
+          direct,
+          restaurantId: restaurantId,
+          fallbackRole: directRole,
+          fallbackName: directName,
+        );
       }
     }
 
@@ -72,6 +115,65 @@ class UserProfileService {
         normalized == 'serveur' ||
         normalized == 'waiter' ||
         normalized == 'service';
+  }
+
+  static bool isOwnerRole(String role) {
+    final normalized = role.toLowerCase().trim();
+    return normalized == 'owner' ||
+        normalized == 'admin' ||
+        normalized == 'gerant' ||
+        normalized == 'gérant' ||
+        normalized == 'manager' ||
+        normalized == 'proprietaire' ||
+        normalized == 'propriétaire';
+  }
+
+  static Future<bool> shouldUseOwnerSetup(UserProfile profile) async {
+    if (isOwnerRole(profile.role)) {
+      return true;
+    }
+
+    final db = FirebaseFirestore.instance;
+    final rootUser = await _tryDoc(db.collection('users').doc(profile.uid));
+    if (_hasOwnerRole(rootUser)) {
+      return true;
+    }
+
+    final member = await _tryDoc(
+      db
+          .collection('restaurants')
+          .doc(profile.restaurantId)
+          .collection('members')
+          .doc(profile.uid),
+    );
+    if (_hasOwnerRole(member)) {
+      return true;
+    }
+
+    final restaurantUser = await _tryDoc(
+      db
+          .collection('restaurants')
+          .doc(profile.restaurantId)
+          .collection('users')
+          .doc(profile.uid),
+    );
+    if (_hasOwnerRole(restaurantUser)) {
+      return true;
+    }
+
+    final restaurant = await _tryDoc(
+      db.collection('restaurants').doc(profile.restaurantId),
+    );
+    final data = restaurant?.data() ?? const <String, dynamic>{};
+    final ownerUid = _readString(data, const [
+      'owner_uid',
+      'ownerUid',
+      'owner_id',
+      'ownerId',
+      'created_by',
+      'createdBy',
+    ], fallback: '');
+    return ownerUid.isNotEmpty && ownerUid == profile.uid;
   }
 
   static Future<DocumentSnapshot<Map<String, dynamic>>?> _tryDoc(
@@ -108,23 +210,36 @@ class UserProfileService {
     User user,
     DocumentSnapshot<Map<String, dynamic>> snapshot, {
     required String? restaurantId,
+    String? fallbackRole,
+    String? fallbackName,
   }) {
     final data = snapshot.data() ?? <String, dynamic>{};
-    final role =
-        _readString(data, const ['role', 'type', 'position'], fallback: 'server');
-    final name = _readString(
-      data,
-      const ['name', 'displayName', 'display_name', 'fullName'],
-      fallback: user.displayName ?? user.email ?? 'Serveur',
-    );
+    final resolvedFallbackRole =
+        fallbackRole != null && fallbackRole.trim().isNotEmpty
+        ? fallbackRole.trim()
+        : 'server';
+    final resolvedFallbackName =
+        fallbackName != null && fallbackName.trim().isNotEmpty
+        ? fallbackName.trim()
+        : (user.displayName ?? user.email ?? 'Serveur');
+    final role = _readString(data, const [
+      'role',
+      'type',
+      'position',
+    ], fallback: resolvedFallbackRole);
+    final name = _readString(data, const [
+      'name',
+      'displayName',
+      'display_name',
+      'fullName',
+    ], fallback: resolvedFallbackName);
     final activeRaw = data['active'];
     final active = activeRaw is bool
         ? activeRaw
         : activeRaw is num
-            ? activeRaw != 0
-            : true;
-    final resolvedRestaurantId =
-        restaurantId ?? _readRestaurantId(data) ?? '';
+        ? activeRaw != 0
+        : true;
+    final resolvedRestaurantId = restaurantId ?? _readRestaurantId(data) ?? '';
     if (resolvedRestaurantId.isEmpty) {
       throw StateError('Restaurant introuvable pour cet utilisateur.');
     }
@@ -140,11 +255,12 @@ class UserProfileService {
 
   static String? _readRestaurantId(Map<String, dynamic>? data) {
     if (data == null) return null;
-    return _readString(
-      data,
-      const ['restaurantId', 'restaurant_id', 'restaurant', 'restaurant_ref'],
-      fallback: null,
-    );
+    return _readString(data, const [
+      'restaurantId',
+      'restaurant_id',
+      'restaurant',
+      'restaurant_ref',
+    ], fallback: null);
   }
 
   static String _readString(
@@ -159,5 +275,18 @@ class UserProfileService {
       }
     }
     return fallback ?? '';
+  }
+
+  static bool _hasOwnerRole(DocumentSnapshot<Map<String, dynamic>>? snapshot) {
+    final data = snapshot?.data();
+    if (data == null) {
+      return false;
+    }
+    final role = _readString(data, const [
+      'role',
+      'type',
+      'position',
+    ], fallback: '');
+    return isOwnerRole(role);
   }
 }

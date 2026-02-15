@@ -17,9 +17,8 @@ class RegistrationFlowScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => RegistrationController(
-        repository: SupabaseRegistrationRepository(),
-      ),
+      create: (_) =>
+          RegistrationController(repository: SupabaseRegistrationRepository()),
       child: const _RegistrationFlowView(),
     );
   }
@@ -41,7 +40,8 @@ class _RegistrationFlowView extends StatelessWidget {
                   builder: (context, constraints) {
                     final width = constraints.maxWidth;
                     final horizontalPadding = width > 600 ? 48.0 : 24.0;
-                    final isBusy = controller.isCheckingUnique ||
+                    final isBusy =
+                        controller.isCheckingUnique ||
                         controller.isVerifying ||
                         controller.isSubmitting;
                     final isLast = controller.currentStep == 2;
@@ -49,8 +49,8 @@ class _RegistrationFlowView extends StatelessWidget {
                     final canProceed = isLast
                         ? controller.canSubmit
                         : controller.currentStep == 0
-                            ? controller.canProceedStep1
-                            : controller.canProceedStep2;
+                        ? controller.canProceedStep1
+                        : controller.canProceedStep2;
 
                     Future<void> handlePrimary() async {
                       if (controller.currentStep == 0) {
@@ -74,6 +74,14 @@ class _RegistrationFlowView extends StatelessWidget {
                             builder: (_) => const RegistrationCompleteScreen(),
                           ),
                         );
+                      } else if (!ok && context.mounted) {
+                        final message =
+                            controller.submitError ??
+                            controller.verificationError ??
+                            'Inscription impossible. Vérifiez votre configuration Firebase.';
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text(message)));
                       }
                     }
 
@@ -95,7 +103,8 @@ class _RegistrationFlowView extends StatelessWidget {
                           const SizedBox(height: 4),
                           Text(
                             'Étape ${controller.currentStep + 1} sur 3',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
                                   color: AvooColors.navy.withOpacity(0.6),
                                 ),
                           ),
@@ -146,11 +155,13 @@ class _RegistrationFlowView extends StatelessWidget {
                                     : () async {
                                         await controller.saveDraft();
                                         if (context.mounted) {
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
                                             const SnackBar(
-                                              content:
-                                                  Text('Brouillon enregistré.'),
+                                              content: Text(
+                                                'Brouillon enregistré.',
+                                              ),
                                             ),
                                           );
                                         }
@@ -273,11 +284,9 @@ class _StepDot extends StatelessWidget {
         Text(
           label,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: isActive
-                    ? const Color(0xFF2D6D66)
-                    : const Color(0xFF8FA9A5),
-                fontWeight: FontWeight.w700,
-              ),
+            color: isActive ? const Color(0xFF2D6D66) : const Color(0xFF8FA9A5),
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ],
     );

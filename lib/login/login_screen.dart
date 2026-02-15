@@ -17,6 +17,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _isSendingResetEmail = false;
 
   @override
   void dispose() {
@@ -45,9 +46,9 @@ class _LoginScreenState extends State<LoginScreen> {
       // TODO: Navigate to the next screen once auth succeeds.
     } on FirebaseAuthException catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_mapAuthError(error))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_mapAuthError(error))));
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -62,10 +63,57 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _sendPasswordResetEmail() async {
+    if (_isLoading || _isSendingResetEmail) return;
+
+    final email = _emailController.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Veuillez saisir un e-mail valide.')),
+      );
+      return;
+    }
+
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _isSendingResetEmail = true;
+    });
+
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'E-mail de réinitialisation envoyé. Vérifiez votre boîte e-mail.',
+          ),
+        ),
+      );
+    } on FirebaseAuthException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_mapPasswordResetError(error))));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Impossible d’envoyer l’e-mail de réinitialisation.'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSendingResetEmail = false;
+        });
+      }
+    }
+  }
+
   void _goToRegistration() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const RegistrationFlowScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const RegistrationFlowScreen()));
   }
 
   String _mapAuthError(FirebaseAuthException error) {
@@ -87,8 +135,22 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  String _mapPasswordResetError(FirebaseAuthException error) {
+    switch (error.code) {
+      case 'invalid-email':
+        return 'Adresse e-mail invalide.';
+      case 'user-not-found':
+        return 'Aucun compte ne correspond à cet e-mail.';
+      case 'too-many-requests':
+        return 'Trop de tentatives. Réessayez plus tard.';
+      default:
+        return 'Envoi impossible. Vérifiez votre adresse e-mail.';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isBusy = _isLoading || _isSendingResetEmail;
     return Scaffold(
       backgroundColor: AvooColors.bone,
       body: Stack(
@@ -122,7 +184,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.next,
                       autofillHints: const [AutofillHints.email],
-                      enabled: !_isLoading,
+                      enabled: !isBusy,
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
                           return 'Veuillez saisir votre e-mail.';
@@ -141,7 +203,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       obscureText: _obscurePassword,
                       textInputAction: TextInputAction.done,
                       autofillHints: const [AutofillHints.password],
-                      enabled: !_isLoading,
+                      enabled: !isBusy,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Veuillez saisir votre mot de passe.';
@@ -170,14 +232,18 @@ class _LoginScreenState extends State<LoginScreen> {
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
-                        onPressed: _isLoading ? null : () {},
+                        onPressed: isBusy ? null : _sendPasswordResetEmail,
                         style: TextButton.styleFrom(
                           foregroundColor: AvooColors.green,
                           padding: const EdgeInsets.symmetric(horizontal: 4),
                         ),
-                        child: const Text(
-                          'Mot de passe oublié ?',
-                          style: TextStyle(decoration: TextDecoration.underline),
+                        child: Text(
+                          _isSendingResetEmail
+                              ? 'Envoi en cours...'
+                              : 'Mot de passe oublié ?',
+                          style: const TextStyle(
+                            decoration: TextDecoration.underline,
+                          ),
                         ),
                       ),
                     ),
@@ -186,7 +252,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       width: double.infinity,
                       height: 54,
                       child: ElevatedButton(
-                        onPressed: _isLoading ? null : _handleLogin,
+                        onPressed: isBusy ? null : _handleLogin,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AvooColors.green,
                           shape: RoundedRectangleBorder(
@@ -201,8 +267,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                 height: 22,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2.4,
-                                  valueColor:
-                                      AlwaysStoppedAnimation<Color>(Colors.white),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
                                 ),
                               )
                             : const Text(
@@ -222,15 +289,18 @@ class _LoginScreenState extends State<LoginScreen> {
                         children: [
                           Text(
                             'Pas encore de compte ? ',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AvooColors.navy.withOpacity(0.7),
-                            ),
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: AvooColors.navy.withOpacity(0.7),
+                                ),
                           ),
                           TextButton(
-                            onPressed: _isLoading ? null : _goToRegistration,
+                            onPressed: isBusy ? null : _goToRegistration,
                             style: TextButton.styleFrom(
                               foregroundColor: AvooColors.green,
-                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                              ),
                             ),
                             child: const Text(
                               "S'inscrire",

@@ -8,6 +8,7 @@ Cette application mobile Flutter couvre principalement :
 - Connexion avec Firebase Authentication
 - Verification de profil et controle d'acces via Cloud Firestore
 - Parcours d'inscription restaurant avec integration optionnelle de Supabase (OTP + upload du logo)
+- Parcours de configuration initiale obligatoire pour le proprietaire avant acces au tableau de bord
 
 Configuration des plateformes dans le code actuel :
 - Android est configure
@@ -89,7 +90,7 @@ Si ces documents sont absents, la connexion peut reussir mais l'application affi
 
 L'ecran d'inscription utilise `SupabaseRegistrationRepository`.
 Sans variables Supabase, l'envoi/verif OTP et l'upload du logo echouent.
-La soumission finale de l'inscription utilise actuellement un chemin mock et ne persiste pas encore un enregistrement backend reel.
+La soumission finale cree un utilisateur Firebase Auth puis ecrit le profil dans Firestore (`/users/{uid}` et `restaurants/{restaurantId}/members/{uid}`).
 
 ### 6.1 Creer un projet Supabase
 
@@ -134,6 +135,20 @@ flutter run --dart-define-from-file=dart_defines.json
 ```bash
 flutter devices
 flutter run -d <device_id> --dart-define-from-file=dart_defines.json
+```
+
+### 7.4 Bypass OTP (dev uniquement)
+
+Le bypass OTP est actif uniquement en build debug.
+
+```bash
+flutter run --dart-define=BYPASS_OTP=true
+```
+
+Avec Supabase defines + bypass:
+
+```bash
+flutter run --dart-define-from-file=dart_defines.json --dart-define=BYPASS_OTP=true
 ```
 
 ## 8. Commandes utiles (dev)

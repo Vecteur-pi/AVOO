@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../config/app_flags.dart';
 import '../../models/verification_method.dart';
 import '../../state/registration_controller.dart';
 import '../widgets/registration_field.dart';
@@ -53,20 +54,33 @@ class VerificationStep extends StatelessWidget {
             'Nous enverrons un code à : $contact',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
+          if (AppFlags.bypassOtp) ...[
+            const SizedBox(height: 8),
+            const Text(
+              'Mode dev: BYPASS_OTP actif. La vérification OTP est ignorée.',
+              style: TextStyle(
+                color: Color(0xFF2D6D66),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           Row(
             children: [
               OutlinedButton.icon(
-                onPressed: controller.isSendingCode || controller.resendSeconds > 0
+                onPressed:
+                    controller.isSendingCode || controller.resendSeconds > 0
                     ? null
                     : controller.sendVerificationCode,
                 icon: const Icon(Icons.send_outlined),
                 label: Text(
-                  controller.resendSeconds > 0
+                  AppFlags.bypassOtp
+                      ? 'Marquer comme vérifié'
+                      : controller.resendSeconds > 0
                       ? 'Renvoyer (${controller.resendSeconds}s)'
                       : controller.verificationSent
-                          ? 'Renvoyer le code'
-                          : 'Envoyer le code',
+                      ? 'Renvoyer le code'
+                      : 'Envoyer le code',
                 ),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: const Color(0xFF43B6A8),
@@ -93,9 +107,13 @@ class VerificationStep extends StatelessWidget {
             controller: controller.verificationCodeController,
             keyboardType: TextInputType.number,
             textInputAction: TextInputAction.done,
-            validator: RegistrationValidators.verificationCode,
+            validator: AppFlags.bypassOtp
+                ? (_) => null
+                : RegistrationValidators.verificationCode,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            helperText: 'Entrez le code reçu par e-mail ou SMS.',
+            helperText: AppFlags.bypassOtp
+                ? 'Bypass actif: vous pouvez terminer sans code.'
+                : 'Entrez le code reçu par e-mail ou SMS.',
           ),
           if (controller.verificationError != null) ...[
             const SizedBox(height: 8),
