@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../login/login_screen.dart';
+import '../owner_dashboard/owner_dashboard_screen.dart';
 import '../owner_setup/owner_setup_gate.dart';
 import '../theme/avoo_theme.dart';
 import 'user_profile.dart';
@@ -48,7 +49,7 @@ class AuthGate extends StatelessWidget {
             if (UserProfileService.isOwnerRole(profile.role)) {
               return OwnerSetupGate(
                 profile: profile,
-                dashboard: _SignedInScreen(profile: profile),
+                dashboard: OwnerDashboardScreen(profile: profile),
               );
             }
             return FutureBuilder<bool>(
@@ -61,7 +62,7 @@ class AuthGate extends StatelessWidget {
                 if (shouldUseOwnerSetup) {
                   return OwnerSetupGate(
                     profile: profile,
-                    dashboard: _SignedInScreen(profile: profile),
+                    dashboard: OwnerDashboardScreen(profile: profile),
                   );
                 }
                 return _SignedInScreen(profile: profile);

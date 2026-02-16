@@ -29,38 +29,38 @@ class AvooTheme {
       onBackground: AvooColors.ink,
     );
 
-    final textTheme = GoogleFonts.nunitoTextTheme(base.textTheme).copyWith(
-      displayLarge: GoogleFonts.nunito(
+    final textTheme = GoogleFonts.interTextTheme(base.textTheme).copyWith(
+      displayLarge: GoogleFonts.inter(
         fontSize: 34,
         fontWeight: FontWeight.w800,
         color: AvooColors.green,
       ),
-      displayMedium: GoogleFonts.nunito(
+      displayMedium: GoogleFonts.inter(
         fontSize: 26,
         fontWeight: FontWeight.w800,
         color: AvooColors.green,
       ),
-      titleLarge: GoogleFonts.nunito(
+      titleLarge: GoogleFonts.inter(
         fontSize: 22,
         fontWeight: FontWeight.w700,
         color: AvooColors.green,
       ),
-      titleMedium: GoogleFonts.nunito(
+      titleMedium: GoogleFonts.inter(
         fontSize: 16,
         fontWeight: FontWeight.w600,
         color: AvooColors.ink,
       ),
-      bodyLarge: GoogleFonts.nunito(
+      bodyLarge: GoogleFonts.inter(
         fontSize: 16,
         fontWeight: FontWeight.w600,
         color: AvooColors.ink,
       ),
-      bodyMedium: GoogleFonts.nunito(
+      bodyMedium: GoogleFonts.inter(
         fontSize: 14,
         fontWeight: FontWeight.w600,
         color: AvooColors.ink,
       ),
-      labelLarge: GoogleFonts.nunito(
+      labelLarge: GoogleFonts.inter(
         fontSize: 14,
         fontWeight: FontWeight.w700,
         letterSpacing: 0.4,

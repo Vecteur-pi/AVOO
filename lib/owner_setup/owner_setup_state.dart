@@ -2,6 +2,8 @@ class OwnerSetupState {
   const OwnerSetupState({
     required this.restaurantId,
     required this.restaurantName,
+    required this.tablesCount,
+    required this.paymentMethods,
     required this.managerCreated,
     required this.tablesAdded,
     required this.qrGenerated,
@@ -11,6 +13,8 @@ class OwnerSetupState {
 
   final String restaurantId;
   final String restaurantName;
+  final int? tablesCount;
+  final List<String> paymentMethods;
   final bool managerCreated;
   final bool tablesAdded;
   final bool qrGenerated;
@@ -21,6 +25,8 @@ class OwnerSetupState {
     return OwnerSetupState(
       restaurantId: restaurantId,
       restaurantName: 'Votre restaurant',
+      tablesCount: null,
+      paymentMethods: const <String>[],
       managerCreated: false,
       tablesAdded: false,
       qrGenerated: false,
@@ -35,6 +41,13 @@ class OwnerSetupState {
   ) {
     final map = data ?? <String, dynamic>{};
     final setupStepsRaw = _readMap(map, const ['setup_steps', 'setupSteps']);
+    final tablesCount = _readInt(map, const ['tables_count', 'tablesCount']);
+    final paymentMethods = _readStringList(map, const [
+      'accepted_payment_methods',
+      'acceptedPaymentMethods',
+      'payment_methods',
+      'paymentMethods',
+    ]);
 
     final managerCreated = _readBool(setupStepsRaw, const [
       'manager_created',
@@ -48,14 +61,16 @@ class OwnerSetupState {
       'qr_generated',
       'qrGenerated',
     ]);
-    final paymentsEnabled = _readBool(setupStepsRaw, const [
-      'payments_enabled',
-      'paymentsEnabled',
-    ]);
+    final paymentsEnabled =
+        _readBool(setupStepsRaw, const [
+          'payments_enabled',
+          'paymentsEnabled',
+        ]) ||
+        paymentMethods.isNotEmpty;
 
     final setupCompleted =
         _readBool(map, const ['setup_completed', 'setupCompleted']) ||
-        (managerCreated && tablesAdded && qrGenerated);
+        (managerCreated && tablesAdded && qrGenerated && paymentsEnabled);
 
     return OwnerSetupState(
       restaurantId: restaurantId,
@@ -64,6 +79,8 @@ class OwnerSetupState {
         'restaurant_name',
         'restaurantName',
       ], fallback: 'Votre restaurant'),
+      tablesCount: tablesCount,
+      paymentMethods: paymentMethods,
       managerCreated: managerCreated,
       tablesAdded: tablesAdded,
       qrGenerated: qrGenerated,
@@ -82,7 +99,7 @@ class OwnerSetupState {
   }
 
   bool get requiredStepsCompleted {
-    return managerCreated && tablesAdded && qrGenerated;
+    return managerCreated && tablesAdded && qrGenerated && paymentsEnabled;
   }
 
   static Map<String, dynamic> _readMap(
@@ -126,5 +143,44 @@ class OwnerSetupState {
       }
     }
     return fallback;
+  }
+
+  static int? _readInt(Map<String, dynamic> data, List<String> keys) {
+    for (final key in keys) {
+      final value = data[key];
+      if (value is int) {
+        return value;
+      }
+      if (value is num) {
+        return value.round();
+      }
+      if (value is String) {
+        final parsed = int.tryParse(value.trim());
+        if (parsed != null) {
+          return parsed;
+        }
+      }
+    }
+    return null;
+  }
+
+  static List<String> _readStringList(
+    Map<String, dynamic> data,
+    List<String> keys,
+  ) {
+    for (final key in keys) {
+      final value = data[key];
+      if (value is List) {
+        final parsed =
+            value
+                .map((item) => item.toString().trim())
+                .where((item) => item.isNotEmpty)
+                .toSet()
+                .toList()
+              ..sort();
+        return parsed;
+      }
+    }
+    return const <String>[];
   }
 }

@@ -5,8 +5,11 @@ import '../config/app_flags.dart';
 import '../theme/avoo_theme.dart';
 import 'owner_setup_manager_form_screen.dart';
 import 'owner_setup_manager_choice_screen.dart';
+import 'owner_setup_payment_methods_screen.dart';
+import 'owner_setup_qr_generation_screen.dart';
 import 'owner_setup_service.dart';
 import 'owner_setup_state.dart';
+import 'owner_setup_tables_screen.dart';
 
 class OwnerSetupGate extends StatelessWidget {
   const OwnerSetupGate({
@@ -91,31 +94,6 @@ class OwnerSetupScreen extends StatefulWidget {
 class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
   OwnerSetupStep? _savingStep;
   bool _finishing = false;
-
-  Future<void> _toggleStep(OwnerSetupStep step, bool currentValue) async {
-    if (_savingStep != null || _finishing) return;
-    setState(() {
-      _savingStep = step;
-    });
-    try {
-      await widget.service.setStep(
-        widget.state.restaurantId,
-        step,
-        !currentValue,
-      );
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Mise à jour impossible. Réessayez.')),
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _savingStep = null;
-        });
-      }
-    }
-  }
 
   Future<void> _finishSetup() async {
     if (_finishing || !widget.state.requiredStepsCompleted) return;
@@ -216,11 +194,137 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
     }
   }
 
+  Future<void> _openTablesSetup() async {
+    if (_savingStep != null || _finishing) return;
+    final state = widget.state;
+    final selectedTablesCount = await Navigator.of(context).push<int>(
+      MaterialPageRoute(
+        builder: (_) => OwnerSetupTablesScreen(
+          restaurantName: state.restaurantName,
+          initialTablesCount: state.tablesCount ?? 10,
+          completedStepsCount: state.completedStepsCount,
+        ),
+      ),
+    );
+    if (!mounted || selectedTablesCount == null) return;
+
+    setState(() {
+      _savingStep = OwnerSetupStep.tablesAdded;
+    });
+    try {
+      await widget.service.saveTablesCount(
+        restaurantId: state.restaurantId,
+        tablesCount: selectedTablesCount,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$selectedTablesCount tables enregistrées.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Mise à jour impossible. Réessayez.')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _savingStep = null;
+        });
+      }
+    }
+  }
+
+  Future<void> _openQrGeneration() async {
+    if (_savingStep != null || _finishing) return;
+    final state = widget.state;
+    final tablesCount = state.tablesCount;
+    if (!state.tablesAdded || tablesCount == null || tablesCount < 1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Définissez d’abord le nombre de tables avant de générer les QR codes.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final generated = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => OwnerSetupQrGenerationScreen(
+          restaurantId: state.restaurantId,
+          restaurantName: state.restaurantName,
+          tablesCount: tablesCount,
+          service: widget.service,
+        ),
+      ),
+    );
+    if (!mounted || generated != true) return;
+
+    await _openPaymentModes(skipQrCheck: true, openedFromQrStep: true);
+  }
+
+  Future<void> _openPaymentModes({
+    bool skipQrCheck = false,
+    bool openedFromQrStep = false,
+  }) async {
+    if (_savingStep != null || _finishing) return;
+    final state = widget.state;
+    if (!skipQrCheck && !state.qrGenerated) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Générez d’abord les QR codes avant les paiements.'),
+        ),
+      );
+      return;
+    }
+
+    final selectedMethods = await Navigator.of(context).push<List<String>>(
+      MaterialPageRoute(
+        builder: (_) => OwnerSetupPaymentMethodsScreen(
+          restaurantName: state.restaurantName,
+          initialMethods: state.paymentMethods,
+        ),
+      ),
+    );
+    if (!mounted || selectedMethods == null) return;
+
+    setState(() {
+      _savingStep = OwnerSetupStep.paymentsEnabled;
+    });
+    try {
+      await widget.service.saveAcceptedPaymentMethods(
+        restaurantId: state.restaurantId,
+        methods: selectedMethods,
+      );
+      if (!mounted) return;
+      final actionText = openedFromQrStep
+          ? 'QR codes créés et modes de paiement enregistrés.'
+          : 'Modes de paiement enregistrés.';
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(actionText)));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Mise à jour impossible. Réessayez.')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _savingStep = null;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = widget.state;
     final progress = state.completedStepsCount / 4.0;
     final continueEnabled = state.requiredStepsCompleted && !_finishing;
+    final qrStepEnabled = state.tablesAdded && (state.tablesCount ?? 0) > 0;
+    final paymentStepEnabled = state.qrGenerated;
     final restaurantName = state.restaurantName.trim();
     final exampleSuffixMatch = RegExp(
       r'^(.*?)(\s*\(.*\))$',
@@ -407,6 +511,7 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
                         icon: Icons.manage_accounts_outlined,
                         isDone: state.managerCreated,
                         isOptional: false,
+                        isEnabled: true,
                         isSaving: _savingStep == OwnerSetupStep.managerCreated,
                         onTap: _openManagerChoice,
                       ),
@@ -415,33 +520,27 @@ class _OwnerSetupScreenState extends State<OwnerSetupScreen> {
                         icon: Icons.restaurant_outlined,
                         isDone: state.tablesAdded,
                         isOptional: false,
+                        isEnabled: true,
                         isSaving: _savingStep == OwnerSetupStep.tablesAdded,
-                        onTap: () => _toggleStep(
-                          OwnerSetupStep.tablesAdded,
-                          state.tablesAdded,
-                        ),
+                        onTap: _openTablesSetup,
                       ),
                       _SetupStepTile(
                         title: '3. Générer QR codes',
                         icon: Icons.qr_code_2_outlined,
                         isDone: state.qrGenerated,
                         isOptional: false,
+                        isEnabled: qrStepEnabled,
                         isSaving: _savingStep == OwnerSetupStep.qrGenerated,
-                        onTap: () => _toggleStep(
-                          OwnerSetupStep.qrGenerated,
-                          state.qrGenerated,
-                        ),
+                        onTap: _openQrGeneration,
                       ),
                       _SetupStepTile(
-                        title: '4. Activer paiements',
+                        title: '4. Mode de paiement',
                         icon: Icons.credit_card_outlined,
                         isDone: state.paymentsEnabled,
-                        isOptional: true,
+                        isOptional: false,
+                        isEnabled: paymentStepEnabled,
                         isSaving: _savingStep == OwnerSetupStep.paymentsEnabled,
-                        onTap: () => _toggleStep(
-                          OwnerSetupStep.paymentsEnabled,
-                          state.paymentsEnabled,
-                        ),
+                        onTap: _openPaymentModes,
                       ),
                       const SizedBox(height: 16),
                       SizedBox(
@@ -510,6 +609,7 @@ class _SetupStepTile extends StatelessWidget {
     required this.icon,
     required this.isDone,
     required this.isOptional,
+    required this.isEnabled,
     required this.isSaving,
     required this.onTap,
   });
@@ -518,18 +618,24 @@ class _SetupStepTile extends StatelessWidget {
   final IconData icon;
   final bool isDone;
   final bool isOptional;
+  final bool isEnabled;
   final bool isSaving;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final showDoneStyle = isDone && !isSaving;
-    final statusLabel = isDone ? 'Fait' : (isOptional ? 'Option' : 'À faire');
-    final statusColor = isDone
+    final isLocked = !isEnabled && !showDoneStyle;
+    final statusLabel = showDoneStyle
+        ? 'Fait'
+        : (isLocked ? 'Bloqué' : (isOptional ? 'Option' : 'À faire'));
+    final statusColor = showDoneStyle
         ? const Color(0xFF91BC84)
-        : (isOptional
-              ? const Color(0xFFA1BE94)
-              : _OwnerSetupColors.primaryPill);
+        : (isLocked
+              ? const Color(0xFFB0B8C6)
+              : (isOptional
+                    ? const Color(0xFFA1BE94)
+                    : _OwnerSetupColors.primaryPill));
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -538,11 +644,13 @@ class _SetupStepTile extends StatelessWidget {
         vertical: showDoneStyle ? 16 : 12,
       ),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.84),
+        color: isLocked
+            ? Colors.white.withOpacity(0.68)
+            : Colors.white.withOpacity(0.84),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withOpacity(isLocked ? 0.02 : 0.04),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -557,12 +665,18 @@ class _SetupStepTile extends StatelessWidget {
             decoration: BoxDecoration(
               color: showDoneStyle
                   ? const Color(0xFF6F985C)
-                  : const Color(0xFFF0F1F4),
+                  : (isLocked
+                        ? const Color(0xFFE6E9EE)
+                        : const Color(0xFFF0F1F4)),
               borderRadius: BorderRadius.circular(showDoneStyle ? 18 : 12),
             ),
             child: Icon(
               showDoneStyle ? Icons.check_rounded : icon,
-              color: showDoneStyle ? Colors.white : const Color(0xFF545F71),
+              color: showDoneStyle
+                  ? Colors.white
+                  : (isLocked
+                        ? const Color(0xFF9AA3B4)
+                        : const Color(0xFF545F71)),
               size: showDoneStyle ? 34 : 20,
             ),
           ),
@@ -584,7 +698,9 @@ class _SetupStepTile extends StatelessWidget {
                     fontWeight: FontWeight.w800,
                     color: showDoneStyle
                         ? const Color(0xFF697387)
-                        : AvooColors.navy,
+                        : (isLocked
+                              ? const Color(0xFF8791A5)
+                              : AvooColors.navy),
                     decoration: showDoneStyle
                         ? TextDecoration.lineThrough
                         : TextDecoration.none,
@@ -601,10 +717,12 @@ class _SetupStepTile extends StatelessWidget {
               width: 78,
               height: 48,
               child: ElevatedButton(
-                onPressed: isSaving ? null : onTap,
+                onPressed: isSaving || !isEnabled ? null : onTap,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: statusColor,
                   foregroundColor: Colors.white,
+                  disabledBackgroundColor: statusColor,
+                  disabledForegroundColor: Colors.white,
                   elevation: 0,
                   padding: EdgeInsets.zero,
                   shape: RoundedRectangleBorder(
@@ -650,7 +768,7 @@ class _WelcomeManAnimation extends StatelessWidget {
         width: 116,
         height: 116,
         child: Image.asset(
-          'assets/images/welcome_man_transparent_trim.png',
+          'assets/images/welcom_ma_Mbolo.png',
           fit: BoxFit.contain,
           alignment: Alignment.center,
           filterQuality: FilterQuality.high,
