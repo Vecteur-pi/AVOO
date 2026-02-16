@@ -6,8 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../auth/user_profile.dart';
+import 'owner_dashboard_repository.dart';
 
-class OwnerDashboardScreen extends StatelessWidget {
+class OwnerDashboardScreen extends StatefulWidget {
   const OwnerDashboardScreen({super.key, required this.profile});
 
   final UserProfile profile;
@@ -24,7 +25,30 @@ class OwnerDashboardScreen extends StatelessWidget {
   static const Color _success = Color(0xFF099C3F);
 
   @override
+  State<OwnerDashboardScreen> createState() => _OwnerDashboardScreenState();
+}
+
+class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
+  final OwnerDashboardRepository _repository = OwnerDashboardRepository();
+  late Stream<OwnerDashboardData> _dashboardStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _dashboardStream = _repository.watch(widget.profile.restaurantId);
+  }
+
+  @override
+  void didUpdateWidget(covariant OwnerDashboardScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.profile.restaurantId != widget.profile.restaurantId) {
+      _dashboardStream = _repository.watch(widget.profile.restaurantId);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final profile = widget.profile;
     final media = MediaQuery.of(context);
     final uiScale = (media.size.width / 430).clamp(0.84, 1.0);
     double s(double value) => value * uiScale;
@@ -37,7 +61,7 @@ class OwnerDashboardScreen extends StatelessWidget {
         statusBarBrightness: Brightness.dark,
       ),
       child: Scaffold(
-        backgroundColor: _topBackground,
+        backgroundColor: OwnerDashboardScreen._topBackground,
         drawerScrimColor: const Color(0x7A000000),
         drawer: _OwnerSidebar(profile: profile),
         body: SafeArea(
@@ -46,309 +70,390 @@ class OwnerDashboardScreen extends StatelessWidget {
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 520),
-              child: ColoredBox(
-                color: _pageBackground,
-                child: Column(
-                  children: [
-                    _DashboardHeader(
-                      profile: profile,
-                      topInset: media.padding.top,
-                    ),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        padding: EdgeInsets.fromLTRB(
-                          s(14),
-                          s(14),
-                          s(14),
-                          s(18) + media.padding.bottom,
+              child: StreamBuilder<OwnerDashboardData>(
+                stream: _dashboardStream,
+                builder: (context, snapshot) {
+                  final data = snapshot.data ?? OwnerDashboardData.empty();
+                  final salesDelta = data.salesChangePercent;
+                  final isPositiveDelta = salesDelta >= 0;
+                  final deltaColor = isPositiveDelta
+                      ? OwnerDashboardScreen._success
+                      : OwnerDashboardScreen._danger;
+
+                  return ColoredBox(
+                    color: OwnerDashboardScreen._pageBackground,
+                    child: Column(
+                      children: [
+                        _DashboardHeader(
+                          profile: profile,
+                          topInset: media.padding.top,
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Vue générale',
-                              style: textTheme.headlineMedium?.copyWith(
-                                color: _ink,
-                                fontSize: s(34),
-                                fontWeight: FontWeight.w900,
-                              ),
+                        Expanded(
+                          child: SingleChildScrollView(
+                            padding: EdgeInsets.fromLTRB(
+                              s(14),
+                              s(14),
+                              s(14),
+                              s(18) + media.padding.bottom,
                             ),
-                            SizedBox(height: s(12)),
-                            _SummaryCard(
-                              title: 'VENTES DU JOUR',
-                              headerColor: _sage,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Wrap(
-                                    crossAxisAlignment: WrapCrossAlignment.end,
-                                    spacing: 10,
-                                    children: [
-                                      Text(
-                                        '325 000',
-                                        style: textTheme.headlineSmall
-                                            ?.copyWith(
-                                              color: const Color(0xFF658F57),
-                                              fontSize: s(42),
-                                              fontWeight: FontWeight.w900,
-                                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (snapshot.hasError)
+                                  Padding(
+                                    padding: EdgeInsets.only(bottom: s(10)),
+                                    child: Text(
+                                      'Certaines données Firebase sont indisponibles.',
+                                      style: textTheme.bodyMedium?.copyWith(
+                                        color: OwnerDashboardScreen._danger,
+                                        fontWeight: FontWeight.w700,
                                       ),
-                                      Text(
-                                        'FCFA',
-                                        style: textTheme.headlineSmall
-                                            ?.copyWith(
-                                              color: _muted,
-                                              fontSize: s(21),
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                      ),
-                                    ],
+                                    ),
                                   ),
-                                  SizedBox(height: s(14)),
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        Icons.trending_up,
-                                        color: _success,
-                                        size: s(20),
-                                      ),
-                                      SizedBox(width: s(6)),
-                                      Text(
-                                        '+15% vs hier',
-                                        style: textTheme.titleMedium?.copyWith(
-                                          color: _success,
-                                          fontWeight: FontWeight.w800,
-                                          fontSize: s(15),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                            SizedBox(height: s(12)),
-                            _SummaryCard(
-                              title: 'TICKETS',
-                              headerColor: _tealCard,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Wrap(
-                                    crossAxisAlignment:
-                                        WrapCrossAlignment.center,
-                                    spacing: 8,
-                                    children: [
-                                      Text(
-                                        '78',
-                                        style: textTheme.headlineSmall
-                                            ?.copyWith(
-                                              color: _tealCard,
-                                              fontSize: s(42),
-                                              fontWeight: FontWeight.w900,
-                                            ),
-                                      ),
-                                      Text(
-                                        'tickets',
-                                        style: textTheme.headlineSmall
-                                            ?.copyWith(
-                                              color: _muted,
-                                              fontSize: s(21),
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                      ),
-                                    ],
-                                  ),
-                                  SizedBox(height: s(12)),
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        Icons.receipt_long_rounded,
-                                        color: _muted,
-                                        size: s(20),
-                                      ),
-                                      SizedBox(width: s(8)),
-                                      Flexible(
-                                        child: Text(
-                                          'Moyenne: 4 167 FCFA/ticket',
-                                          style: textTheme.titleMedium
-                                              ?.copyWith(
-                                                color: _muted,
-                                                fontSize: s(16),
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                            SizedBox(height: s(12)),
-                            _SummaryCard(
-                              title: 'INCIDENTS',
-                              headerColor: _danger,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Wrap(
-                                    crossAxisAlignment:
-                                        WrapCrossAlignment.center,
-                                    spacing: 8,
-                                    children: [
-                                      Text(
-                                        '2',
-                                        style: textTheme.headlineSmall
-                                            ?.copyWith(
-                                              color: _danger,
-                                              fontSize: s(42),
-                                              fontWeight: FontWeight.w900,
-                                            ),
-                                      ),
-                                      Text(
-                                        'à valider',
-                                        style: textTheme.headlineSmall
-                                            ?.copyWith(
-                                              color: _muted,
-                                              fontSize: s(21),
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                      ),
-                                    ],
-                                  ),
-                                  SizedBox(height: s(12)),
-                                  _ActionText(
-                                    text: 'Voir les incidents',
-                                    color: _danger,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            SizedBox(height: s(12)),
-                            _SummaryCard(
-                              title: 'STOCK BAS',
-                              headerColor: _warning,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Wrap(
-                                    crossAxisAlignment:
-                                        WrapCrossAlignment.center,
-                                    spacing: 8,
-                                    children: [
-                                      Text(
-                                        '5',
-                                        style: textTheme.headlineSmall
-                                            ?.copyWith(
-                                              color: _warning,
-                                              fontSize: s(42),
-                                              fontWeight: FontWeight.w900,
-                                            ),
-                                      ),
-                                      Text(
-                                        'produits en alerte',
-                                        style: textTheme.headlineSmall
-                                            ?.copyWith(
-                                              color: _muted,
-                                              fontSize: s(21),
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                      ),
-                                    ],
-                                  ),
-                                  SizedBox(height: s(12)),
-                                  _ActionText(
-                                    text: 'Gérer le stock',
-                                    color: _warning,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            SizedBox(height: s(14)),
-                            _SummaryCard(
-                              title: 'VENTES PAR HEURE',
-                              headerColor: _tealCard,
-                              bodyPadding: const EdgeInsets.fromLTRB(
-                                8,
-                                18,
-                                10,
-                                12,
-                              ),
-                              child: const SizedBox(
-                                height: 300,
-                                child: _SalesByHourChart(),
-                              ),
-                            ),
-                            SizedBox(height: s(12)),
-                            _SummaryCard(
-                              title: 'TOP PRODUITS',
-                              headerColor: _sage,
-                              bodyPadding: const EdgeInsets.fromLTRB(
-                                16,
-                                16,
-                                16,
-                                18,
-                              ),
-                              child: Column(
-                                children: const [
-                                  _TopProductRow(
-                                    rank: 1,
-                                    name: 'Poulet braisé',
-                                    details: '45 ventes • 67 500 FCFA',
-                                    growth: '+12%',
-                                    isHot: true,
-                                  ),
-                                  SizedBox(height: 12),
-                                  _TopProductRow(
-                                    rank: 2,
-                                    name: "Burger Avo'o",
-                                    details: '38 ventes • 57 000 FCFA',
-                                    growth: '+8%',
-                                  ),
-                                  SizedBox(height: 12),
-                                  _TopProductRow(
-                                    rank: 3,
-                                    name: 'Salade César',
-                                    details: '22 ventes • 33 000 FCFA',
-                                    growth: '+5%',
-                                  ),
-                                ],
-                              ),
-                            ),
-                            SizedBox(height: s(12)),
-                            SizedBox(
-                              width: double.infinity,
-                              height: s(50),
-                              child: FilledButton(
-                                onPressed: () {},
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: _sage,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
+                                Text(
+                                  'Vue générale',
+                                  style: textTheme.headlineMedium?.copyWith(
+                                    color: OwnerDashboardScreen._ink,
+                                    fontSize: s(34),
+                                    fontWeight: FontWeight.w900,
                                   ),
                                 ),
-                                child: Text(
-                                  'Voir tous les produits  ›',
-                                  style: textTheme.titleLarge?.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: s(15),
+                                SizedBox(height: s(12)),
+                                _SummaryCard(
+                                  title: 'VENTES DU JOUR',
+                                  headerColor: OwnerDashboardScreen._sage,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Wrap(
+                                        crossAxisAlignment:
+                                            WrapCrossAlignment.end,
+                                        spacing: 10,
+                                        children: [
+                                          Text(
+                                            _formatInt(data.dailySales.round()),
+                                            style: textTheme.headlineSmall
+                                                ?.copyWith(
+                                                  color: const Color(
+                                                    0xFF658F57,
+                                                  ),
+                                                  fontSize: s(42),
+                                                  fontWeight: FontWeight.w900,
+                                                ),
+                                          ),
+                                          Text(
+                                            'FCFA',
+                                            style: textTheme.headlineSmall
+                                                ?.copyWith(
+                                                  color: OwnerDashboardScreen
+                                                      ._muted,
+                                                  fontSize: s(21),
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                          ),
+                                        ],
+                                      ),
+                                      SizedBox(height: s(14)),
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            isPositiveDelta
+                                                ? Icons.trending_up
+                                                : Icons.trending_down,
+                                            color: deltaColor,
+                                            size: s(20),
+                                          ),
+                                          SizedBox(width: s(6)),
+                                          Text(
+                                            '${_formatSignedPercent(salesDelta)} vs hier',
+                                            style: textTheme.titleMedium
+                                                ?.copyWith(
+                                                  color: deltaColor,
+                                                  fontWeight: FontWeight.w800,
+                                                  fontSize: s(15),
+                                                ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              ),
+                                SizedBox(height: s(12)),
+                                _SummaryCard(
+                                  title: 'TICKETS',
+                                  headerColor: OwnerDashboardScreen._tealCard,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Wrap(
+                                        crossAxisAlignment:
+                                            WrapCrossAlignment.center,
+                                        spacing: 8,
+                                        children: [
+                                          Text(
+                                            _formatInt(data.dailyTickets),
+                                            style: textTheme.headlineSmall
+                                                ?.copyWith(
+                                                  color: OwnerDashboardScreen
+                                                      ._tealCard,
+                                                  fontSize: s(42),
+                                                  fontWeight: FontWeight.w900,
+                                                ),
+                                          ),
+                                          Text(
+                                            'tickets',
+                                            style: textTheme.headlineSmall
+                                                ?.copyWith(
+                                                  color: OwnerDashboardScreen
+                                                      ._muted,
+                                                  fontSize: s(21),
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                          ),
+                                        ],
+                                      ),
+                                      SizedBox(height: s(12)),
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.receipt_long_rounded,
+                                            color: OwnerDashboardScreen._muted,
+                                            size: s(20),
+                                          ),
+                                          SizedBox(width: s(8)),
+                                          Flexible(
+                                            child: Text(
+                                              'Moyenne: ${_formatInt(data.averageTicket.round())} FCFA/ticket',
+                                              style: textTheme.titleMedium
+                                                  ?.copyWith(
+                                                    color: OwnerDashboardScreen
+                                                        ._muted,
+                                                    fontSize: s(16),
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                SizedBox(height: s(12)),
+                                _SummaryCard(
+                                  title: 'INCIDENTS',
+                                  headerColor: OwnerDashboardScreen._danger,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Wrap(
+                                        crossAxisAlignment:
+                                            WrapCrossAlignment.center,
+                                        spacing: 8,
+                                        children: [
+                                          Text(
+                                            _formatInt(data.pendingIncidents),
+                                            style: textTheme.headlineSmall
+                                                ?.copyWith(
+                                                  color: OwnerDashboardScreen
+                                                      ._danger,
+                                                  fontSize: s(42),
+                                                  fontWeight: FontWeight.w900,
+                                                ),
+                                          ),
+                                          Text(
+                                            'à valider',
+                                            style: textTheme.headlineSmall
+                                                ?.copyWith(
+                                                  color: OwnerDashboardScreen
+                                                      ._muted,
+                                                  fontSize: s(21),
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                          ),
+                                        ],
+                                      ),
+                                      SizedBox(height: s(12)),
+                                      const _ActionText(
+                                        text: 'Voir les incidents',
+                                        color: OwnerDashboardScreen._danger,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                SizedBox(height: s(12)),
+                                _SummaryCard(
+                                  title: 'STOCK BAS',
+                                  headerColor: OwnerDashboardScreen._warning,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Wrap(
+                                        crossAxisAlignment:
+                                            WrapCrossAlignment.center,
+                                        spacing: 8,
+                                        children: [
+                                          Text(
+                                            _formatInt(data.lowStockProducts),
+                                            style: textTheme.headlineSmall
+                                                ?.copyWith(
+                                                  color: OwnerDashboardScreen
+                                                      ._warning,
+                                                  fontSize: s(42),
+                                                  fontWeight: FontWeight.w900,
+                                                ),
+                                          ),
+                                          Text(
+                                            'produits en alerte',
+                                            style: textTheme.headlineSmall
+                                                ?.copyWith(
+                                                  color: OwnerDashboardScreen
+                                                      ._muted,
+                                                  fontSize: s(21),
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                          ),
+                                        ],
+                                      ),
+                                      SizedBox(height: s(12)),
+                                      const _ActionText(
+                                        text: 'Gérer le stock',
+                                        color: OwnerDashboardScreen._warning,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                SizedBox(height: s(14)),
+                                _SummaryCard(
+                                  title: 'VENTES PAR HEURE',
+                                  headerColor: OwnerDashboardScreen._tealCard,
+                                  bodyPadding: const EdgeInsets.fromLTRB(
+                                    8,
+                                    18,
+                                    10,
+                                    12,
+                                  ),
+                                  child: SizedBox(
+                                    height: 300,
+                                    child: _SalesByHourChart(
+                                      labels: data.hourlyLabels,
+                                      values: data.hourlySales,
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(height: s(12)),
+                                _SummaryCard(
+                                  title: 'TOP PRODUITS',
+                                  headerColor: OwnerDashboardScreen._sage,
+                                  bodyPadding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    16,
+                                    16,
+                                    18,
+                                  ),
+                                  child: _buildTopProducts(
+                                    context: context,
+                                    products: data.topProducts,
+                                  ),
+                                ),
+                                SizedBox(height: s(12)),
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: s(50),
+                                  child: FilledButton(
+                                    onPressed: () {},
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor:
+                                          OwnerDashboardScreen._sage,
+                                      foregroundColor: Colors.white,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      'Voir tous les produits  ›',
+                                      style: textTheme.titleLarge?.copyWith(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: s(15),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
             ),
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildTopProducts({
+    required BuildContext context,
+    required List<TopProductData> products,
+  }) {
+    if (products.isEmpty) {
+      return Text(
+        'Aucune vente produit pour aujourd’hui.',
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+          color: OwnerDashboardScreen._muted,
+          fontWeight: FontWeight.w700,
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        for (var index = 0; index < products.length; index++) ...[
+          _TopProductRow(
+            rank: index + 1,
+            name: products[index].name,
+            details:
+                '${_formatInt(products[index].quantity)} ventes • ${_formatInt(products[index].revenue.round())} FCFA',
+            growthPercent: products[index].growthPercent,
+            isHot: index == 0,
+          ),
+          if (index < products.length - 1) const SizedBox(height: 12),
+        ],
+      ],
+    );
+  }
+
+  String _formatInt(int value) {
+    final absolute = value.abs().toString();
+    final groups = <String>[];
+    for (var i = absolute.length; i > 0; i -= 3) {
+      final start = math.max(0, i - 3);
+      groups.insert(0, absolute.substring(start, i));
+    }
+    final grouped = groups.join(' ');
+    return value < 0 ? '-$grouped' : grouped;
+  }
+
+  String _formatSignedPercent(double value) {
+    final decimals = value.abs() >= 10 ? 0 : 1;
+    var formatted = value.toStringAsFixed(decimals);
+    if (formatted.endsWith('.0')) {
+      formatted = formatted.substring(0, formatted.length - 2);
+    }
+    if (formatted == '-0') {
+      formatted = '0';
+    }
+    if (value > 0 && !formatted.startsWith('+')) {
+      formatted = '+$formatted';
+    }
+    return '$formatted%';
   }
 }
 
@@ -795,19 +900,38 @@ class _TopProductRow extends StatelessWidget {
     required this.rank,
     required this.name,
     required this.details,
-    required this.growth,
+    required this.growthPercent,
     this.isHot = false,
   });
 
   final int rank;
   final String name;
   final String details;
-  final String growth;
+  final double growthPercent;
   final bool isHot;
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final isPositive = growthPercent >= 0;
+    final growthColor = isPositive
+        ? const Color(0xFF008639)
+        : const Color(0xFFB42318);
+    final growthBackground = isPositive
+        ? const Color(0xFFCBE9D1)
+        : const Color(0xFFF7D7D2);
+    final growthArrow = isPositive ? '↗' : '↘';
+    final decimals = growthPercent.abs() >= 10 ? 0 : 1;
+    var growthText = growthPercent.toStringAsFixed(decimals);
+    if (growthText.endsWith('.0')) {
+      growthText = growthText.substring(0, growthText.length - 2);
+    }
+    if (growthText == '-0') {
+      growthText = '0';
+    }
+    if (isPositive && !growthText.startsWith('+')) {
+      growthText = '+$growthText';
+    }
 
     return Container(
       decoration: BoxDecoration(
@@ -874,13 +998,13 @@ class _TopProductRow extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: const Color(0xFFCBE9D1),
+              color: growthBackground,
               borderRadius: BorderRadius.circular(16),
             ),
             child: Text(
-              '↗ $growth',
+              '$growthArrow $growthText%',
               style: textTheme.titleMedium?.copyWith(
-                color: const Color(0xFF008639),
+                color: growthColor,
                 fontSize: 15,
                 fontWeight: FontWeight.w900,
               ),
@@ -893,23 +1017,13 @@ class _TopProductRow extends StatelessWidget {
 }
 
 class _SalesByHourChart extends StatelessWidget {
-  const _SalesByHourChart();
+  const _SalesByHourChart({required this.labels, required this.values});
+
+  final List<String> labels;
+  final List<double> values;
 
   @override
   Widget build(BuildContext context) {
-    const labels = [
-      '8h',
-      '9h',
-      '10h',
-      '11h',
-      '12h',
-      '13h',
-      '14h',
-      '15h',
-      '17h',
-    ];
-    const values = [15.0, 25.0, 18.0, 35.0, 52.0, 48.0, 38.0, 22.0, 44.0];
-
     return CustomPaint(
       painter: _SalesChartPainter(values: values, labels: labels),
       size: Size.infinite,
@@ -933,8 +1047,10 @@ class _SalesChartPainter extends CustomPainter {
       return;
     }
 
-    const maxY = 60.0;
-    const yTicks = [0.0, 15.0, 30.0, 45.0, 60.0];
+    final highest = values.fold<double>(0, math.max);
+    final step = _niceStep(highest <= 0 ? 1000 : highest / 4);
+    final maxY = step * 4;
+    final yTicks = [0.0, step, step * 2, step * 3, step * 4];
     const leftPadding = 50.0;
     const rightPadding = 14.0;
     const topPadding = 16.0;
@@ -976,7 +1092,7 @@ class _SalesChartPainter extends CustomPainter {
       }
       _drawText(
         canvas,
-        '${tick.toInt()}k',
+        _formatAxisLabel(tick),
         Offset(4, y - 12),
         const TextStyle(
           color: _axisColor,
@@ -1080,6 +1196,33 @@ class _SalesChartPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _SalesChartPainter oldDelegate) {
     return oldDelegate.values != values || oldDelegate.labels != labels;
+  }
+
+  String _formatAxisLabel(double value) {
+    if (value >= 1000000) {
+      return '${(value / 1000000).toStringAsFixed(1)}M';
+    }
+    if (value >= 1000) {
+      final kilo = value / 1000;
+      final asString = kilo % 1 == 0
+          ? kilo.toStringAsFixed(0)
+          : kilo.toStringAsFixed(1);
+      return '${asString}k';
+    }
+    return value.toStringAsFixed(0);
+  }
+
+  double _niceStep(double raw) {
+    if (raw <= 1000) return 1000;
+    if (raw <= 2500) return 2500;
+    if (raw <= 5000) return 5000;
+    if (raw <= 10000) return 10000;
+    if (raw <= 25000) return 25000;
+    if (raw <= 50000) return 50000;
+    if (raw <= 100000) return 100000;
+    if (raw <= 250000) return 250000;
+    if (raw <= 500000) return 500000;
+    return 1000000;
   }
 }
 
