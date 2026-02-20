@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../state/registration_controller.dart';
+import '../../utils/registration_validators.dart';
 import '../widgets/registration_field.dart';
 
 class RestaurantInfoStep extends StatelessWidget {

@@ -1,0 +1,206 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---- Helpers ----
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function memberPath(restaurantId) {
+      return /databases/$(database)/documents/restaurants/$(restaurantId)/members/$(request.auth.uid);
+    }
+
+    function isActiveMember(restaurantId) {
+      return signedIn()
+        && exists(memberPath(restaurantId))
+        && get(memberPath(restaurantId)).data.active == true;
+    }
+
+    function memberRole(restaurantId) {
+      return get(memberPath(restaurantId)).data.role;
+    }
+
+    function isOwner(restaurantId) {
+      return isActiveMember(restaurantId) && memberRole(restaurantId) == "owner";
+    }
+
+    function isStaff(restaurantId) {
+      return isActiveMember(restaurantId)
+        && (memberRole(restaurantId) in ["owner", "waiter", "serveur", "server", "service"]);
+    }
+
+    // Bootstrap create from registration flow
+    function isRestaurantBootstrapCreate(restaurantId) {
+      return signedIn()
+        && request.resource.data.id == restaurantId
+        && request.resource.data.owner_uid == request.auth.uid
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.active == true;
+    }
+
+    function isOwnerSeedMember(restaurantId, uid) {
+      return isSelf(uid)
+        && request.resource.data.role == "owner"
+        && request.resource.data.active == true
+        && (
+          request.resource.data.restaurant_id == restaurantId
+          || request.resource.data.restaurantId == restaurantId
+        );
+    }
+
+    // ---- Default deny ----
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ---- Top-level user mapping ----
+    match /users/{uid} {
+      allow read: if isSelf(uid)
+        || (signedIn() && isOwner(resource.data.restaurant_id));
+
+      allow create: if isSelf(uid)
+        && request.resource.data.uid == uid
+        && request.resource.data.role == "owner"
+        && request.resource.data.active == true
+        && request.resource.data.restaurant_id is string;
+
+      allow update: if (isSelf(uid)
+        && request.resource.data.restaurant_id == resource.data.restaurant_id)
+        || isOwner(resource.data.restaurant_id);
+
+      allow delete: if isOwner(resource.data.restaurant_id);
+    }
+
+    // ---- Restaurants ----
+    match /restaurants/{restaurantId} {
+
+      // restaurant doc
+      allow read: if isActiveMember(restaurantId);
+      allow update, delete: if isOwner(restaurantId);
+      allow create: if isRestaurantBootstrapCreate(restaurantId);
+
+      // Areas
+      match /areas/{areaId} {
+        allow read: if isActiveMember(restaurantId);
+        allow create, update, delete: if isOwner(restaurantId);
+      }
+
+      // Members
+      match /members/{uid} {
+        allow read: if isActiveMember(restaurantId);
+
+        allow create: if isOwner(restaurantId) || isOwnerSeedMember(restaurantId, uid);
+        allow delete: if isOwner(restaurantId);
+
+        allow update: if isOwner(restaurantId)
+          || (
+            signedIn()
+            && uid == request.auth.uid
+            && request.resource.data.diff(resource.data).changedKeys()
+                .hasOnly(["display_name", "updated_at"])
+          );
+      }
+
+      // Settings
+      match /settings/{settingsId} {
+        allow read: if isActiveMember(restaurantId);
+        allow create, update, delete: if isOwner(restaurantId);
+      }
+
+      // Tables
+      match /tables/{tableId} {
+        allow read: if isActiveMember(restaurantId);
+        allow create, delete: if isOwner(restaurantId);
+
+        allow update: if isOwner(restaurantId)
+          || (
+            isStaff(restaurantId)
+            && request.resource.data.diff(resource.data).changedKeys()
+                .hasOnly([
+                  "active_ticket_id",
+                  "active_ticket_status",
+                  "qr_token_id",
+                  "status",
+                  "updated_at"
+                ])
+          );
+      }
+
+      // Users under restaurant (optional)
+      match /users/{uid} {
+        allow read: if isOwner(restaurantId) || isSelf(uid);
+
+        allow create: if isOwner(restaurantId) || isOwnerSeedMember(restaurantId, uid);
+        allow delete: if isOwner(restaurantId);
+
+        allow update: if signedIn()
+          && uid == request.auth.uid
+          && (
+            request.resource.data.restaurant_id == resource.data.restaurant_id
+            || request.resource.data.restaurantId == resource.data.restaurantId
+          )
+          && request.resource.data.active == resource.data.active
+          && request.resource.data.diff(resource.data).changedKeys()
+              .hasOnly(["display_name", "phone", "updated_at"]);
+      }
+
+      // Menu
+      match /menu_categories/{catId} {
+        allow read: if isActiveMember(restaurantId);
+        allow create, update, delete: if isOwner(restaurantId);
+      }
+
+      match /menu_items/{itemId} {
+        allow read: if isActiveMember(restaurantId);
+        allow create, update, delete: if isOwner(restaurantId);
+      }
+
+      // Tickets
+      match /tickets/{ticketId} {
+        allow read: if isActiveMember(restaurantId);
+        allow create, update: if isStaff(restaurantId);
+        allow delete: if isOwner(restaurantId);
+
+        match /items/{itemId} {
+          allow read: if isActiveMember(restaurantId);
+          allow create, update: if isStaff(restaurantId);
+          allow delete: if isOwner(restaurantId);
+        }
+      }
+
+      // Incidents
+      match /incidents/{incidentId} {
+        allow read: if isActiveMember(restaurantId);
+        allow create: if isStaff(restaurantId);
+        allow update, delete: if isOwner(restaurantId);
+      }
+
+      // Inventory (Stocks)
+      match /inventory/{itemId} {
+        allow read: if isActiveMember(restaurantId);
+        allow create, update: if isStaff(restaurantId);
+        allow delete: if isOwner(restaurantId);
+      }
+    }
+
+    // ---- ORDERS (New) ----
+    match /orders/{orderId} {
+      // Allow read if user is a member of the restaurant
+      allow read: if isActiveMember(resource.data.restaurantId);
+      
+      // Allow create if user is a member of the restaurant (e.g. staff creating order)
+      allow create: if isActiveMember(request.resource.data.restaurantId);
+      
+      // Allow update if user is a member (e.g. changing status)
+      allow update: if isActiveMember(resource.data.restaurantId);
+      
+      // Allow delete if user is owner
+      allow delete: if isOwner(resource.data.restaurantId);
+    }
+  }
+}

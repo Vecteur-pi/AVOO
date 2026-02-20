@@ -1,39 +1,32 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../login/login_screen.dart';
 import '../owner_dashboard/owner_dashboard_screen.dart';
 import '../owner_setup/owner_setup_gate.dart';
 import '../theme/avoo_theme.dart';
 import 'user_profile.dart';
+import 'user_provider.dart';
 
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const _LoadingScreen();
-        }
-        final user = snapshot.data;
-        if (user == null) {
-          return const LoginScreen();
-        }
-        return FutureBuilder<UserProfile>(
-          future: UserProfileService.load(user),
-          builder: (context, profileSnapshot) {
-            if (profileSnapshot.connectionState == ConnectionState.waiting) {
-              return const _LoadingScreen();
-            }
-            if (profileSnapshot.hasError) {
-              return _MissingProfileScreen(
-                message: profileSnapshot.error.toString(),
-              );
-            }
-            final profile = profileSnapshot.data;
+    return Consumer<UserProvider>(
+      builder: (context, userProvider, _) {
+        switch (userProvider.status) {
+          case AuthStatus.initial:
+          case AuthStatus.loading:
+            return const _LoadingScreen();
+          case AuthStatus.unauthenticated:
+            return const LoginScreen();
+          case AuthStatus.error:
+            return _MissingProfileScreen(
+              message: userProvider.errorMessage ?? 'Erreur inconnue',
+            );
+          case AuthStatus.authenticated:
+            final profile = userProvider.profile;
             if (profile == null) {
               return const _MissingProfileScreen(
                 message: 'Profil introuvable.',
@@ -46,12 +39,16 @@ class AuthGate extends StatelessWidget {
                     'Ce compte est inactif. Contactez un administrateur pour réactiver l’accès.',
               );
             }
+            
+            // Logic for owner redirection could also be moved to UserProvider or a separate service
+            // For now, keeping it here to match previous behavior but cleaner
             if (UserProfileService.isOwnerRole(profile.role)) {
-              return OwnerSetupGate(
+               return OwnerSetupGate(
                 profile: profile,
                 dashboard: OwnerDashboardScreen(profile: profile),
               );
             }
+
             return FutureBuilder<bool>(
               future: UserProfileService.shouldUseOwnerSetup(profile),
               builder: (context, ownerSnapshot) {
@@ -68,8 +65,7 @@ class AuthGate extends StatelessWidget {
                 return _SignedInScreen(profile: profile);
               },
             );
-          },
-        );
+        }
       },
     );
   }
@@ -113,7 +109,7 @@ class _MissingProfileScreen extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: () => FirebaseAuth.instance.signOut(),
+              onPressed: () => context.read<UserProvider>().signOut(),
               child: const Text('Se déconnecter'),
             ),
           ],
@@ -139,7 +135,7 @@ class _SignedInScreen extends StatelessWidget {
         elevation: 0,
         actions: [
           IconButton(
-            onPressed: () => FirebaseAuth.instance.signOut(),
+            onPressed: () => context.read<UserProvider>().signOut(),
             icon: const Icon(Icons.logout),
             tooltip: 'Se déconnecter',
           ),
@@ -161,7 +157,7 @@ class _SignedInScreen extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: () => FirebaseAuth.instance.signOut(),
+              onPressed: () => context.read<UserProvider>().signOut(),
               child: const Text('Se déconnecter'),
             ),
           ],
@@ -201,7 +197,7 @@ class _AccessDeniedScreen extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: () => FirebaseAuth.instance.signOut(),
+              onPressed: () => context.read<UserProvider>().signOut(),
               child: const Text('Se déconnecter'),
             ),
           ],

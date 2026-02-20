@@ -9,6 +9,7 @@ class UserProfile {
     required this.name,
     required this.active,
     this.email,
+    this.photoUrl,
   });
 
   final String uid;
@@ -17,6 +18,7 @@ class UserProfile {
   final String name;
   final bool active;
   final String? email;
+  final String? photoUrl;
 }
 
 class UserProfileService {
@@ -243,6 +245,14 @@ class UserProfileService {
     if (resolvedRestaurantId.isEmpty) {
       throw StateError('Restaurant introuvable pour cet utilisateur.');
     }
+    final photoUrl = _readString(data, const [
+      'photoUrl',
+      'photo_url',
+      'photo',
+      'avatar',
+      'picture',
+    ], fallback: null);
+
     return UserProfile(
       uid: user.uid,
       role: role,
@@ -250,6 +260,7 @@ class UserProfileService {
       name: name,
       active: active,
       email: user.email,
+      photoUrl: photoUrl.isEmpty ? null : photoUrl,
     );
   }
 

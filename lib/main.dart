@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'firebase_options.dart';
 import 'auth/auth_gate.dart';
+import 'auth/user_provider.dart';
 import 'theme/avoo_theme.dart';
 import 'supabase/supabase_config.dart';
 
@@ -26,11 +28,14 @@ class AvooApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Avoo',
-      debugShowCheckedModeBanner: false,
-      theme: AvooTheme.light,
-      home: const AuthGate(),
+    return ChangeNotifierProvider(
+      create: (_) => UserProvider(),
+      child: MaterialApp(
+        title: 'Avoo',
+        debugShowCheckedModeBanner: false,
+        theme: AvooTheme.light,
+        home: const AuthGate(),
+      ),
     );
   }
 }

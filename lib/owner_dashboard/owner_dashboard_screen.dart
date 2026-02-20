@@ -6,6 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../auth/user_profile.dart';
+import '../menu/ui/menu_screen.dart';
+import '../orders/ui/orders_screen.dart';
+import '../stocks/ui/stocks_screen.dart';
 import 'owner_dashboard_repository.dart';
 
 class OwnerDashboardScreen extends StatefulWidget {
@@ -35,16 +38,18 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
   @override
   void initState() {
     super.initState();
-    _dashboardStream = _repository.watch(widget.profile.restaurantId);
+    _dashboardStream = _repository.watch(widget.profile.restaurantId).asBroadcastStream();
   }
 
   @override
   void didUpdateWidget(covariant OwnerDashboardScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.profile.restaurantId != widget.profile.restaurantId) {
-      _dashboardStream = _repository.watch(widget.profile.restaurantId);
+      _dashboardStream = _repository.watch(widget.profile.restaurantId).asBroadcastStream();
     }
   }
+
+  int _selectedIndex = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +57,89 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
     final media = MediaQuery.of(context);
     final uiScale = (media.size.width / 430).clamp(0.84, 1.0);
     double s(double value) => value * uiScale;
-    final textTheme = Theme.of(context).textTheme;
+
+    Widget body;
+    if (_selectedIndex == 0) {
+      body = Column(
+        children: [
+          _TopAppBar(
+            profile: profile,
+            topInset: media.padding.top,
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                s(16),
+                s(24),
+                s(16),
+                s(24),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                   // Dashboard Title Row
+                  _DashboardTitleRow(uiScale: uiScale),
+                  SizedBox(height: s(24)),
+                  // Content
+                  StreamBuilder<OwnerDashboardData>(
+                    stream: _dashboardStream,
+                    builder: (context, snapshot) {
+                      final data = snapshot.data ?? OwnerDashboardData.empty();
+                      return _DashboardContent(data: data, uiScale: uiScale);
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    } else if (_selectedIndex == 1) {
+      // Commandes Screen
+      // We pass the restaurant ID from the profile
+      body = Column( // Column to include TopAppBar if desired, or just screen
+        children: [
+           _TopAppBar(
+            profile: profile,
+            topInset: media.padding.top,
+          ),
+          Expanded(child: OrdersScreen(restaurantId: profile.restaurantId)),
+        ],
+      );
+    } else if (_selectedIndex == 2) {
+      // Stocks Screen
+      body = Column(
+        children: [
+           _TopAppBar(
+            profile: profile,
+            topInset: media.padding.top,
+          ),
+          Expanded(child: StocksScreen(restaurantId: profile.restaurantId)),
+        ],
+      );
+    } else if (_selectedIndex == 3) {
+      // Menu Screen
+      body = Column(
+        children: [
+           _TopAppBar(
+            profile: profile,
+            topInset: media.padding.top,
+          ),
+          Expanded(child: MenuScreen(restaurantId: profile.restaurantId)),
+        ],
+      );
+    } else {
+      // Placeholder for other tabs
+      body = Column(
+        children: [
+           _TopAppBar(
+            profile: profile,
+            topInset: media.padding.top,
+          ),
+          const Expanded(child: Center(child: Text("Coming Soon"))),
+        ],
+      );
+    }
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
@@ -61,344 +148,553 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
         statusBarBrightness: Brightness.dark,
       ),
       child: Scaffold(
-        backgroundColor: OwnerDashboardScreen._topBackground,
-        drawerScrimColor: const Color(0x7A000000),
-        drawer: _OwnerSidebar(profile: profile),
-        body: SafeArea(
-          top: false,
-          bottom: false,
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
-              child: StreamBuilder<OwnerDashboardData>(
-                stream: _dashboardStream,
-                builder: (context, snapshot) {
-                  final data = snapshot.data ?? OwnerDashboardData.empty();
-                  final salesDelta = data.salesChangePercent;
-                  final isPositiveDelta = salesDelta >= 0;
-                  final deltaColor = isPositiveDelta
-                      ? OwnerDashboardScreen._success
-                      : OwnerDashboardScreen._danger;
-
-                  return ColoredBox(
-                    color: OwnerDashboardScreen._pageBackground,
-                    child: Column(
-                      children: [
-                        _DashboardHeader(
-                          profile: profile,
-                          topInset: media.padding.top,
-                        ),
-                        Expanded(
-                          child: SingleChildScrollView(
-                            padding: EdgeInsets.fromLTRB(
-                              s(14),
-                              s(14),
-                              s(14),
-                              s(18) + media.padding.bottom,
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (snapshot.hasError)
-                                  Padding(
-                                    padding: EdgeInsets.only(bottom: s(10)),
-                                    child: Text(
-                                      'Certaines données Firebase sont indisponibles.',
-                                      style: textTheme.bodyMedium?.copyWith(
-                                        color: OwnerDashboardScreen._danger,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                Text(
-                                  'Vue générale',
-                                  style: textTheme.headlineMedium?.copyWith(
-                                    color: OwnerDashboardScreen._ink,
-                                    fontSize: s(34),
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                                SizedBox(height: s(12)),
-                                _SummaryCard(
-                                  title: 'VENTES DU JOUR',
-                                  headerColor: OwnerDashboardScreen._sage,
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Wrap(
-                                        crossAxisAlignment:
-                                            WrapCrossAlignment.end,
-                                        spacing: 10,
-                                        children: [
-                                          Text(
-                                            _formatInt(data.dailySales.round()),
-                                            style: textTheme.headlineSmall
-                                                ?.copyWith(
-                                                  color: const Color(
-                                                    0xFF658F57,
-                                                  ),
-                                                  fontSize: s(42),
-                                                  fontWeight: FontWeight.w900,
-                                                ),
-                                          ),
-                                          Text(
-                                            'FCFA',
-                                            style: textTheme.headlineSmall
-                                                ?.copyWith(
-                                                  color: OwnerDashboardScreen
-                                                      ._muted,
-                                                  fontSize: s(21),
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                          ),
-                                        ],
-                                      ),
-                                      SizedBox(height: s(14)),
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            isPositiveDelta
-                                                ? Icons.trending_up
-                                                : Icons.trending_down,
-                                            color: deltaColor,
-                                            size: s(20),
-                                          ),
-                                          SizedBox(width: s(6)),
-                                          Text(
-                                            '${_formatSignedPercent(salesDelta)} vs hier',
-                                            style: textTheme.titleMedium
-                                                ?.copyWith(
-                                                  color: deltaColor,
-                                                  fontWeight: FontWeight.w800,
-                                                  fontSize: s(15),
-                                                ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                SizedBox(height: s(12)),
-                                _SummaryCard(
-                                  title: 'TICKETS',
-                                  headerColor: OwnerDashboardScreen._tealCard,
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Wrap(
-                                        crossAxisAlignment:
-                                            WrapCrossAlignment.center,
-                                        spacing: 8,
-                                        children: [
-                                          Text(
-                                            _formatInt(data.dailyTickets),
-                                            style: textTheme.headlineSmall
-                                                ?.copyWith(
-                                                  color: OwnerDashboardScreen
-                                                      ._tealCard,
-                                                  fontSize: s(42),
-                                                  fontWeight: FontWeight.w900,
-                                                ),
-                                          ),
-                                          Text(
-                                            'tickets',
-                                            style: textTheme.headlineSmall
-                                                ?.copyWith(
-                                                  color: OwnerDashboardScreen
-                                                      ._muted,
-                                                  fontSize: s(21),
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                          ),
-                                        ],
-                                      ),
-                                      SizedBox(height: s(12)),
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            Icons.receipt_long_rounded,
-                                            color: OwnerDashboardScreen._muted,
-                                            size: s(20),
-                                          ),
-                                          SizedBox(width: s(8)),
-                                          Flexible(
-                                            child: Text(
-                                              'Moyenne: ${_formatInt(data.averageTicket.round())} FCFA/ticket',
-                                              style: textTheme.titleMedium
-                                                  ?.copyWith(
-                                                    color: OwnerDashboardScreen
-                                                        ._muted,
-                                                    fontSize: s(16),
-                                                    fontWeight: FontWeight.w700,
-                                                  ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                SizedBox(height: s(12)),
-                                _SummaryCard(
-                                  title: 'INCIDENTS',
-                                  headerColor: OwnerDashboardScreen._danger,
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Wrap(
-                                        crossAxisAlignment:
-                                            WrapCrossAlignment.center,
-                                        spacing: 8,
-                                        children: [
-                                          Text(
-                                            _formatInt(data.pendingIncidents),
-                                            style: textTheme.headlineSmall
-                                                ?.copyWith(
-                                                  color: OwnerDashboardScreen
-                                                      ._danger,
-                                                  fontSize: s(42),
-                                                  fontWeight: FontWeight.w900,
-                                                ),
-                                          ),
-                                          Text(
-                                            'à valider',
-                                            style: textTheme.headlineSmall
-                                                ?.copyWith(
-                                                  color: OwnerDashboardScreen
-                                                      ._muted,
-                                                  fontSize: s(21),
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                          ),
-                                        ],
-                                      ),
-                                      SizedBox(height: s(12)),
-                                      const _ActionText(
-                                        text: 'Voir les incidents',
-                                        color: OwnerDashboardScreen._danger,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                SizedBox(height: s(12)),
-                                _SummaryCard(
-                                  title: 'STOCK BAS',
-                                  headerColor: OwnerDashboardScreen._warning,
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Wrap(
-                                        crossAxisAlignment:
-                                            WrapCrossAlignment.center,
-                                        spacing: 8,
-                                        children: [
-                                          Text(
-                                            _formatInt(data.lowStockProducts),
-                                            style: textTheme.headlineSmall
-                                                ?.copyWith(
-                                                  color: OwnerDashboardScreen
-                                                      ._warning,
-                                                  fontSize: s(42),
-                                                  fontWeight: FontWeight.w900,
-                                                ),
-                                          ),
-                                          Text(
-                                            'produits en alerte',
-                                            style: textTheme.headlineSmall
-                                                ?.copyWith(
-                                                  color: OwnerDashboardScreen
-                                                      ._muted,
-                                                  fontSize: s(21),
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                          ),
-                                        ],
-                                      ),
-                                      SizedBox(height: s(12)),
-                                      const _ActionText(
-                                        text: 'Gérer le stock',
-                                        color: OwnerDashboardScreen._warning,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                SizedBox(height: s(14)),
-                                _SummaryCard(
-                                  title: 'VENTES PAR HEURE',
-                                  headerColor: OwnerDashboardScreen._tealCard,
-                                  bodyPadding: const EdgeInsets.fromLTRB(
-                                    8,
-                                    18,
-                                    10,
-                                    12,
-                                  ),
-                                  child: SizedBox(
-                                    height: 300,
-                                    child: _SalesByHourChart(
-                                      labels: data.hourlyLabels,
-                                      values: data.hourlySales,
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(height: s(12)),
-                                _SummaryCard(
-                                  title: 'TOP PRODUITS',
-                                  headerColor: OwnerDashboardScreen._sage,
-                                  bodyPadding: const EdgeInsets.fromLTRB(
-                                    16,
-                                    16,
-                                    16,
-                                    18,
-                                  ),
-                                  child: _buildTopProducts(
-                                    context: context,
-                                    products: data.topProducts,
-                                  ),
-                                ),
-                                SizedBox(height: s(12)),
-                                SizedBox(
-                                  width: double.infinity,
-                                  height: s(50),
-                                  child: FilledButton(
-                                    onPressed: () {},
-                                    style: FilledButton.styleFrom(
-                                      backgroundColor:
-                                          OwnerDashboardScreen._sage,
-                                      foregroundColor: Colors.white,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(16),
-                                      ),
-                                    ),
-                                    child: Text(
-                                      'Voir tous les produits  ›',
-                                      style: textTheme.titleLarge?.copyWith(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: s(15),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
+        backgroundColor: const Color(0xFFF5F6F3),
+        body: body,
+        bottomNavigationBar: NavigationBarTheme(
+          data: NavigationBarThemeData(
+            labelTextStyle: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.selected)) {
+                return const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                );
+              }
+              return const TextStyle(
+                color: Color(0xFF9CA3AF),
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              );
+            }),
+            iconTheme: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.selected)) {
+                return const IconThemeData(color: Colors.white);
+              }
+              return const IconThemeData(color: Color(0xFF9CA3AF));
+            }),
+          ),
+          child: NavigationBar(
+            height: 65,
+            backgroundColor: const Color(0xFF2D3B4F),
+            indicatorColor: const Color(0xFF739760),
+            selectedIndex: _selectedIndex,
+            onDestinationSelected: (index) {
+              setState(() {
+                _selectedIndex = index;
+              });
+            },
+            destinations: const [
+              NavigationDestination(
+                icon: Icon(Icons.home_outlined),
+                selectedIcon: Icon(Icons.home_filled),
+                label: 'Dashboard',
               ),
-            ),
+              NavigationDestination(
+                icon: Icon(Icons.receipt_long_outlined),
+                selectedIcon: Icon(Icons.receipt_long),
+                label: 'Commandes',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.inventory_2_outlined),
+                selectedIcon: Icon(Icons.inventory_2),
+                label: 'Stocks',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.restaurant_outlined),
+                selectedIcon: Icon(Icons.restaurant),
+                label: 'Menu',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.bar_chart_outlined),
+                selectedIcon: Icon(Icons.bar_chart),
+                label: 'Rapports',
+              ),
+            ],
+            labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
           ),
         ),
       ),
     );
   }
+}
 
+class _TopAppBar extends StatelessWidget {
+  const _TopAppBar({required this.profile, required this.topInset});
+
+  final UserProfile profile;
+  final double topInset;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      color: const Color(0xFF2D3B4F), // Dark Blue background
+      padding: EdgeInsets.fromLTRB(16, topInset + 12, 16, 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Logo Area in Pink
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFD1DC), // Light Pink
+              borderRadius: BorderRadius.circular(12),
+            ),
+            alignment: Alignment.center,
+            child: const Text(
+              '🥑', // Avocado placeholder emoji
+              style: TextStyle(fontSize: 28),
+            ),
+          ),
+          const SizedBox(width: 12),
+          // App Name and Subtitle
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  "Avo'o",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 20,
+                    fontFamily: 'Serif',
+                  ),
+                ),
+                Flexible(
+                  child: _OwnerSubtitle(profile: profile),
+                ),
+              ],
+            ),
+          ),
+          // Notification Bell
+          Stack(
+            children: [
+              const Icon(
+                Icons.notifications_outlined,
+                color: Colors.white,
+                size: 26,
+              ),
+              Positioned(
+                top: 2,
+                right: 2,
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFEF4444), // Red notification dot
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 16),
+          // User Avatar
+            Theme(
+              data: Theme.of(context).copyWith(
+                dividerTheme: const DividerThemeData(
+                  color: Color(0xFFF3F4F6),
+                  thickness: 1,
+                  space: 1,
+                ),
+                popupMenuTheme: PopupMenuThemeData(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  color: Colors.white,
+                  surfaceTintColor: Colors.white,
+                  elevation: 4,
+                  textStyle: const TextStyle(
+                    color: Color(0xFF111827),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+              child: PopupMenuButton<String>(
+                offset: const Offset(0, 50),
+                tooltip: 'Menu profil',
+                itemBuilder: (context) => [
+                  // User Info Header
+                  PopupMenuItem<String>(
+                    enabled: false,
+                    height: 80,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          profile.name,
+                          style: const TextStyle(
+                            color: Color(0xFF111827),
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          profile.email ?? '',
+                          style: const TextStyle(
+                            color: Color(0xFF6B7280),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuDivider(height: 1),
+                  // Settings
+                  const PopupMenuItem<String>(
+                    value: 'settings',
+                    height: 48,
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.settings_outlined,
+                          color: Color(0xFF4B5563),
+                          size: 20,
+                        ),
+                        SizedBox(width: 12),
+                        Text('Paramètres'),
+                      ],
+                    ),
+                  ),
+                  // Accounting
+                  const PopupMenuItem<String>(
+                    value: 'accounting',
+                    height: 48,
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.calculate_outlined,
+                          color: Color(0xFF4B5563),
+                          size: 20,
+                        ),
+                        SizedBox(width: 12),
+                        Text('Comptabilité'),
+                      ],
+                    ),
+                  ),
+                ],
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE5E7EB),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 1.5),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  alignment: Alignment.center,
+                  child: profile.photoUrl != null
+                      ? Image.network(
+                          profile.photoUrl!,
+                          fit: BoxFit.cover,
+                          width: 40,
+                          height: 40,
+                          errorBuilder: (_, __, ___) => const Icon(
+                            Icons.person,
+                            color: Color(0xFF9CA3AF),
+                            size: 24,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.person,
+                          color: Color(0xFF9CA3AF),
+                          size: 24,
+                        ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DashboardTitleRow extends StatelessWidget {
+  const _DashboardTitleRow({required this.uiScale});
+
+  final double uiScale;
+
+  @override
+  Widget build(BuildContext context) {
+    double s(double value) => value * uiScale;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          'Dashboard',
+          style: textTheme.headlineMedium?.copyWith(
+            color: const Color(0xFF111827),
+            fontSize: s(36),
+            fontWeight: FontWeight.w900,
+            letterSpacing: -0.5,
+            fontFamily: 'Serif',
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 2,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "Aujourd'hui",
+                style: textTheme.bodyMedium?.copyWith(
+                  color: const Color(0xFF374151),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(
+                Icons.keyboard_arrow_down_rounded,
+                size: 20,
+                color: Color(0xFF6B7280),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DashboardContent extends StatelessWidget {
+  const _DashboardContent({required this.data, required this.uiScale});
+
+  final OwnerDashboardData data;
+  final double uiScale;
+
+  @override
+  Widget build(BuildContext context) {
+    double s(double value) => value * uiScale;
+    final textTheme = Theme.of(context).textTheme;
+    final salesDelta = data.salesChangePercent;
+    final isPositiveDelta = salesDelta >= 0;
+    final deltaColor = isPositiveDelta
+        ? OwnerDashboardScreen._success
+        : OwnerDashboardScreen._danger;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final cardWidth = (constraints.maxWidth - s(16)) / 2;
+            return Wrap(
+              spacing: s(16),
+              runSpacing: s(16),
+              children: [
+                SizedBox(
+                  width: cardWidth,
+                  child: _SummaryCard(
+                    title: 'VENTES DU JOUR',
+                    headerColor: const Color(0xFF739760),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        RichText(
+                          text: TextSpan(
+                            children: [
+                              TextSpan(
+                                text: _formatInt(data.dailySales.round()),
+                                style: textTheme.headlineSmall?.copyWith(
+                                  color: const Color(0xFF739760), // Match header green
+                                  fontSize: s(28),
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              TextSpan(
+                                text: ' FCFA',
+                                style: textTheme.bodySmall?.copyWith(
+                                  color: const Color(0xFF9CA3AF),
+                                  fontSize: s(13),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: cardWidth,
+                  child: _SummaryCard(
+                    title: 'TICKETS',
+                    headerColor: const Color(0xFF2D3B4F),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        RichText(
+                          text: TextSpan(
+                            children: [
+                              TextSpan(
+                                text: _formatInt(data.dailyTickets),
+                                style: textTheme.headlineSmall?.copyWith(
+                                  color: const Color(0xFF2D3B4F),
+                                  fontSize: s(28),
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              TextSpan(
+                                text: ' tickets',
+                                style: textTheme.bodySmall?.copyWith(
+                                  color: const Color(0xFF9CA3AF),
+                                  fontSize: s(13),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: cardWidth,
+                  child: _SummaryCard(
+                    title: 'INCIDENTS',
+                    headerColor: const Color(0xFF2D3B4F),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        RichText(
+                          text: TextSpan(
+                            children: [
+                              TextSpan(
+                                text: _formatInt(data.pendingIncidents),
+                                style: textTheme.headlineSmall?.copyWith(
+                                  color: const Color(0xFF2D3B4F),
+                                  fontSize: s(28),
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              TextSpan(
+                                text: ' à valider',
+                                style: textTheme.bodySmall?.copyWith(
+                                  color: const Color(0xFF9CA3AF),
+                                  fontSize: s(13),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: cardWidth,
+                  child: _SummaryCard(
+                    title: 'ALERTES STOCK',
+                    headerColor: const Color(0xFFDC6843),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        RichText(
+                          text: TextSpan(
+                            children: [
+                              TextSpan(
+                                text: _formatInt(data.lowStockProducts),
+                                style: textTheme.headlineSmall?.copyWith(
+                                  color: const Color(0xFFDC6843),
+                                  fontSize: s(28),
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              TextSpan(
+                                text: ' produits',
+                                style: textTheme.bodySmall?.copyWith(
+                                  color: const Color(0xFF9CA3AF),
+                                  fontSize: s(13),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+        SizedBox(height: s(24)),
+        Container(
+          padding: EdgeInsets.all(s(20)),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Ventes par heure',
+                style: textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  fontSize: s(18),
+                  color: const Color(0xFF111827),
+                ),
+              ),
+              SizedBox(height: s(24)),
+              SizedBox(
+                height: 240,
+                child: _SalesByHourChart(
+                  labels: data.hourlyLabels,
+                  values: data.hourlySales,
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: s(24)),
+      ],
+    );
+  }
+
+  String _formatInt(int value) {
+    final absolute = value.abs().toString();
+    final groups = <String>[];
+    for (var i = absolute.length; i > 0; i -= 3) {
+      final start = math.max(0, i - 3);
+      groups.insert(0, absolute.substring(start, i));
+    }
+    final grouped = groups.join(' ');
+    return value < 0 ? '-$grouped' : grouped;
+  }
   Widget _buildTopProducts({
     required BuildContext context,
     required List<TopProductData> products,
@@ -430,17 +726,6 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
     );
   }
 
-  String _formatInt(int value) {
-    final absolute = value.abs().toString();
-    final groups = <String>[];
-    for (var i = absolute.length; i > 0; i -= 3) {
-      final start = math.max(0, i - 3);
-      groups.insert(0, absolute.substring(start, i));
-    }
-    final grouped = groups.join(' ');
-    return value < 0 ? '-$grouped' : grouped;
-  }
-
   String _formatSignedPercent(double value) {
     final decimals = value.abs() >= 10 ? 0 : 1;
     var formatted = value.toStringAsFixed(decimals);
@@ -457,73 +742,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
   }
 }
 
-class _DashboardHeader extends StatelessWidget {
-  const _DashboardHeader({required this.profile, required this.topInset});
 
-  final UserProfile profile;
-  final double topInset;
-
-  static const Color _header = Color(0xFF1A4748);
-  static const Color _chip = Color(0xFF7AA265);
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.fromLTRB(12, topInset + 8, 12, 14),
-      decoration: const BoxDecoration(color: _header),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Builder(
-            builder: (buttonContext) => IconButton(
-              onPressed: () => Scaffold.of(buttonContext).openDrawer(),
-              icon: const Icon(Icons.menu_rounded),
-              iconSize: 24,
-              color: Colors.white,
-              tooltip: 'Menu',
-            ),
-          ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Dashboard',
-                  style: textTheme.headlineMedium?.copyWith(
-                    color: Colors.white,
-                    fontSize: 40 * 0.75,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                _OwnerSubtitle(profile: profile),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: _chip,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              "Aujourd'hui",
-              style: textTheme.titleMedium?.copyWith(
-                color: Colors.white,
-                fontSize: 16 * 0.75,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _OwnerSubtitle extends StatelessWidget {
   const _OwnerSubtitle({required this.profile});
@@ -532,11 +751,11 @@ class _OwnerSubtitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textStyle = Theme.of(context).textTheme.titleMedium?.copyWith(
-      color: const Color(0xFFCAD5D2),
-      fontWeight: FontWeight.w700,
-      fontSize: 14,
-    );
+    final textStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: const Color(0xFFD1D5DB), // Light grey for dark background
+          fontWeight: FontWeight.w500,
+          fontSize: 13,
+        );
 
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
@@ -551,8 +770,11 @@ class _OwnerSubtitle extends StatelessWidget {
           'restaurantName',
           'title',
         ]);
-        final subtitle = restaurantName.isEmpty
-            ? profile.name
+        
+        // Combine user name and restaurant name if needed, or just restaurant
+        // The header already shows "Avo'o", this subtitle usually shows "User — Restaurant"
+        final subtitle = restaurantName.isEmpty 
+            ? '${profile.name}' 
             : '${profile.name} — $restaurantName';
 
         return Text(
@@ -566,254 +788,7 @@ class _OwnerSubtitle extends StatelessWidget {
   }
 }
 
-class _OwnerSidebar extends StatelessWidget {
-  const _OwnerSidebar({required this.profile});
 
-  final UserProfile profile;
-
-  static const Color _drawerBackground = Color(0xFF1A4748);
-  static const Color _activeItem = Color(0xFF739760);
-  static const Color _inactiveText = Color(0xFFBFCDCA);
-
-  @override
-  Widget build(BuildContext context) {
-    final media = MediaQuery.of(context);
-    final width = math.min(media.size.width * 0.82, 350.0);
-    final textTheme = Theme.of(context).textTheme;
-
-    return SafeArea(
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Container(
-          width: width,
-          margin: const EdgeInsets.fromLTRB(10, 8, 16, 8),
-          decoration: BoxDecoration(
-            color: _drawerBackground,
-            borderRadius: BorderRadius.circular(28),
-          ),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
-                child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                  stream: FirebaseFirestore.instance
-                      .collection('restaurants')
-                      .doc(profile.restaurantId)
-                      .snapshots(),
-                  builder: (context, snapshot) {
-                    final data = snapshot.data?.data();
-                    final restaurantName = _readString(data, const [
-                      'name',
-                      'restaurant_name',
-                      'restaurantName',
-                      'title',
-                    ]);
-                    final logoUrl = _readString(data, const [
-                      'logo_url',
-                      'logoUrl',
-                      'logo',
-                      'image',
-                    ]);
-                    final title = restaurantName.isEmpty
-                        ? 'Restaurant'
-                        : restaurantName;
-
-                    return Row(
-                      children: [
-                        _RestaurantLogo(logoUrl: logoUrl),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            title,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: textTheme.headlineSmall?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 26,
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-              const Divider(color: Color(0x2CFFFFFF), height: 1),
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-                  children: [
-                    _SidebarMenuTile(
-                      label: 'Dashboard',
-                      icon: Icons.bar_chart_rounded,
-                      active: true,
-                      activeColor: _activeItem,
-                      textColor: _inactiveText,
-                      onTap: () => Navigator.of(context).pop(),
-                    ),
-                    const SizedBox(height: 8),
-                    _SidebarMenuTile(
-                      label: 'Commandes',
-                      icon: Icons.shopping_cart_outlined,
-                      activeColor: _activeItem,
-                      textColor: _inactiveText,
-                      onTap: () => Navigator.of(context).pop(),
-                    ),
-                    _SidebarMenuTile(
-                      label: 'Menus',
-                      icon: Icons.restaurant_menu_rounded,
-                      activeColor: _activeItem,
-                      textColor: _inactiveText,
-                      onTap: () => Navigator.of(context).pop(),
-                    ),
-                    _SidebarMenuTile(
-                      label: 'Stocks',
-                      icon: Icons.inventory_2_outlined,
-                      activeColor: _activeItem,
-                      textColor: _inactiveText,
-                      onTap: () => Navigator.of(context).pop(),
-                    ),
-                    _SidebarMenuTile(
-                      label: 'Incidents',
-                      icon: Icons.warning_amber_rounded,
-                      activeColor: _activeItem,
-                      textColor: _inactiveText,
-                      onTap: () => Navigator.of(context).pop(),
-                    ),
-                    _SidebarMenuTile(
-                      label: 'Comptabilité',
-                      icon: Icons.description_outlined,
-                      activeColor: _activeItem,
-                      textColor: _inactiveText,
-                      onTap: () => Navigator.of(context).pop(),
-                    ),
-                    _SidebarMenuTile(
-                      label: 'Rapports',
-                      icon: Icons.query_stats_rounded,
-                      activeColor: _activeItem,
-                      textColor: _inactiveText,
-                      onTap: () => Navigator.of(context).pop(),
-                    ),
-                    _SidebarMenuTile(
-                      label: 'Utilisateurs',
-                      icon: Icons.groups_rounded,
-                      activeColor: _activeItem,
-                      textColor: _inactiveText,
-                      onTap: () => Navigator.of(context).pop(),
-                    ),
-                    _SidebarMenuTile(
-                      label: 'Paramètres',
-                      icon: Icons.settings_outlined,
-                      activeColor: _activeItem,
-                      textColor: _inactiveText,
-                      onTap: () => Navigator.of(context).pop(),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(color: Color(0x2CFFFFFF), height: 1),
-              _SidebarMenuTile(
-                label: 'Déconnexion',
-                icon: Icons.logout_rounded,
-                activeColor: _activeItem,
-                textColor: _inactiveText,
-                onTap: () async {
-                  Navigator.of(context).pop();
-                  await FirebaseAuth.instance.signOut();
-                },
-              ),
-              SizedBox(height: media.padding.bottom > 0 ? 6 : 12),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _RestaurantLogo extends StatelessWidget {
-  const _RestaurantLogo({required this.logoUrl});
-
-  final String logoUrl;
-
-  @override
-  Widget build(BuildContext context) {
-    final hasLogo = logoUrl.trim().isNotEmpty;
-    final radius = BorderRadius.circular(14);
-
-    return Container(
-      width: 52,
-      height: 52,
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F3233),
-        borderRadius: radius,
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: hasLogo
-          ? Image.network(
-              logoUrl,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) {
-                return const Icon(
-                  Icons.storefront_rounded,
-                  color: Color(0xFFC4D3D0),
-                  size: 26,
-                );
-              },
-            )
-          : const Icon(
-              Icons.storefront_rounded,
-              color: Color(0xFFC4D3D0),
-              size: 26,
-            ),
-    );
-  }
-}
-
-class _SidebarMenuTile extends StatelessWidget {
-  const _SidebarMenuTile({
-    required this.label,
-    required this.icon,
-    required this.activeColor,
-    required this.textColor,
-    required this.onTap,
-    this.active = false,
-  });
-
-  final String label;
-  final IconData icon;
-  final Color activeColor;
-  final Color textColor;
-  final VoidCallback onTap;
-  final bool active;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 2),
-      decoration: BoxDecoration(
-        color: active ? activeColor : Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: ListTile(
-        dense: true,
-        visualDensity: const VisualDensity(horizontal: -1, vertical: -1),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        leading: Icon(icon, color: active ? Colors.white : textColor, size: 24),
-        title: Text(
-          label,
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: active ? Colors.white : textColor,
-            fontSize: 22,
-            fontWeight: active ? FontWeight.w800 : FontWeight.w700,
-          ),
-        ),
-        onTap: onTap,
-      ),
-    );
-  }
-}
 
 class _SummaryCard extends StatelessWidget {
   const _SummaryCard({
@@ -832,13 +807,13 @@ class _SummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: OwnerDashboardScreen._surface,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-            color: Color(0x14000000),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 12,
-            offset: Offset(0, 5),
+            offset: const Offset(0, 5),
           ),
         ],
       ),
@@ -856,8 +831,8 @@ class _SummaryCard extends StatelessWidget {
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w900,
-                  fontSize: 14,
-                  letterSpacing: 0.6,
+                  fontSize: 12.5,
+                  letterSpacing: 0.8,
                 ),
               ),
             ),
@@ -1073,13 +1048,20 @@ class _SalesChartPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
 
+    // Line paint (Blue)
     final linePaint = Paint()
-      ..color = _lineColor
+      ..color = const Color(0xFF4285F4) // Brighter Google-like Blue
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 4
+      ..strokeWidth = 3
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
 
+    // Bar paint (Green)
+    final barPaint = Paint()
+      ..color = const Color(0xFF739760) // Sage Green for bars
+      ..style = PaintingStyle.fill;
+    
+    // Draw grid lines and Y-axis labels
     for (final tick in yTicks) {
       final y = chartRect.bottom - (tick / maxY) * chartRect.height;
       if (tick > 0) {
@@ -1095,55 +1077,61 @@ class _SalesChartPainter extends CustomPainter {
         _formatAxisLabel(tick),
         Offset(4, y - 12),
         const TextStyle(
-          color: _axisColor,
-          fontSize: 18,
-          fontWeight: FontWeight.w700,
+          color: Color(0xFF9CA3AF), // Lighter grey for axis
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
         ),
       );
     }
 
     final xStep = labels.length == 1
         ? 0.0
-        : chartRect.width / (labels.length - 1);
+        : chartRect.width / (labels.length); // Divide by N for bars
 
+    final barWidth = xStep * 0.7; // Bar width increased to 70% of step
+
+    // Draw bars and X-axis labels
     for (var i = 0; i < labels.length; i++) {
-      final x = chartRect.left + (xStep * i);
-      if (i > 0) {
-        _drawDashedLine(
-          canvas,
-          Offset(x, chartRect.top),
-          Offset(x, chartRect.bottom),
-          gridPaint,
-        );
-      }
+        // Calculate center X for this item
+      final xCenter = chartRect.left + (xStep * i) + (xStep / 2);
+      
+      // Draw Bar
+      final barHeight = (values[i] / maxY) * chartRect.height;
+      final barRect = Rect.fromCenter(
+        center: Offset(xCenter, chartRect.bottom - (barHeight / 2)),
+        width: barWidth,
+        height: barHeight,
+      );
+      
+      // Use RRect for rounded top corners
+      canvas.drawRRect(
+        RRect.fromRectAndCorners(
+          barRect,
+          topLeft: const Radius.circular(6),
+          topRight: const Radius.circular(6),
+        ),
+        barPaint,
+      );
+
+      // Draw Label
       _drawText(
         canvas,
         labels[i],
-        Offset(x - 12, chartRect.bottom + 8),
+        Offset(xCenter - 14, chartRect.bottom + 12), // Centered label roughly
         const TextStyle(
-          color: _axisColor,
-          fontSize: 18,
-          fontWeight: FontWeight.w700,
+          color: Color(0xFF9CA3AF),
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
         ),
       );
     }
 
-    canvas.drawLine(
-      Offset(chartRect.left, chartRect.top),
-      Offset(chartRect.left, chartRect.bottom),
-      axisPaint,
-    );
-    canvas.drawLine(
-      Offset(chartRect.left, chartRect.bottom),
-      Offset(chartRect.right, chartRect.bottom),
-      axisPaint,
-    );
-
+    // Draw Line Overlay
     final points = <Offset>[];
     for (var i = 0; i < values.length; i++) {
-      final x = chartRect.left + (xStep * i);
+      final xCenter = chartRect.left + (xStep * i) + (xStep / 2);
       final y = chartRect.bottom - (values[i] / maxY) * chartRect.height;
-      points.add(Offset(x, y));
+      points.add(Offset(xCenter, y));
     }
 
     if (points.length >= 2) {
@@ -1151,6 +1139,7 @@ class _SalesChartPainter extends CustomPainter {
       for (var i = 0; i < points.length - 1; i++) {
         final current = points[i];
         final next = points[i + 1];
+        // Use straight lines or cubic bezier. Cubic looks nicer.
         final controlX = (current.dx + next.dx) / 2;
         path.cubicTo(controlX, current.dy, controlX, next.dy, next.dx, next.dy);
       }
@@ -1158,10 +1147,17 @@ class _SalesChartPainter extends CustomPainter {
     }
 
     final pointPaint = Paint()
-      ..color = _lineColor
+      ..color = const Color(0xFF4285F4)
       ..style = PaintingStyle.fill;
+    
+    final pointStrokePaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+
     for (final point in points) {
-      canvas.drawCircle(point, 7.5, pointPaint);
+      canvas.drawCircle(point, 6, pointPaint);
+      canvas.drawCircle(point, 6, pointStrokePaint);
     }
   }
 
