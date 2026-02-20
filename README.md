@@ -151,6 +151,38 @@ Avec Supabase defines + bypass:
 flutter run --dart-define-from-file=dart_defines.json --dart-define=BYPASS_OTP=true
 ```
 
+### 7.5 Bypass OTP temporaire (contact cible)
+
+Pour depanner un testeur precis, vous pouvez activer un bypass limite a 1 contact + 1 code secret.
+
+Variables supportees :
+- `TEMP_OTP_BYPASS_EMAIL`
+- `TEMP_OTP_BYPASS_PHONE`
+- `TEMP_OTP_BYPASS_CODE`
+
+Exemple (telephone) :
+
+```bash
+flutter run -d <device_id> \
+  --dart-define-from-file=dart_defines.json \
+  --dart-define=TEMP_OTP_BYPASS_PHONE=+24161234567 \
+  --dart-define=TEMP_OTP_BYPASS_CODE=741258
+```
+
+Exemple (e-mail) :
+
+```bash
+flutter run -d <device_id> \
+  --dart-define-from-file=dart_defines.json \
+  --dart-define=TEMP_OTP_BYPASS_EMAIL=ami@example.com \
+  --dart-define=TEMP_OTP_BYPASS_CODE=741258
+```
+
+Notes :
+- Le champ OTP dans l'app accepte uniquement des chiffres.
+- Le bypass temporaire ne marche que si le contact saisi correspond exactement au define.
+- Retirez ces defines des que le depannage est termine.
+
 ## 8. Commandes utiles (dev)
 
 ```bash
@@ -190,3 +222,4 @@ Note : `test/widget_test.dart` est encore le test compteur par defaut et ne corr
 - Ne committez pas de secrets.
 - Gardez les cles runtime dans des fichiers/variables locales autant que possible.
 - `google-services.json`, `firebase_options.dart` et les fichiers de variables doivent etre geres par environnement.
+- N'utilisez pas `TEMP_OTP_BYPASS_*` en production.

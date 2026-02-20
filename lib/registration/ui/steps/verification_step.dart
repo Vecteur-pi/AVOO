@@ -64,6 +64,16 @@ class VerificationStep extends StatelessWidget {
                 fontWeight: FontWeight.w700,
               ),
             ),
+          ] else if (controller
+              .isTemporaryOtpBypassAvailableForSelectedContact) ...[
+            const SizedBox(height: 8),
+            const Text(
+              'Mode temporaire: utilisez le code de secours pour ce contact.',
+              style: TextStyle(
+                color: Color(0xFF2D6D66),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ],
           const SizedBox(height: 12),
           Row(
@@ -75,7 +85,7 @@ class VerificationStep extends StatelessWidget {
                     : controller.sendVerificationCode,
                 icon: const Icon(Icons.send_outlined),
                 label: Text(
-                  AppFlags.bypassOtp
+                  controller.isOtpBypassActiveForSelectedContact
                       ? 'Marquer comme vérifié'
                       : controller.resendSeconds > 0
                       ? 'Renvoyer (${controller.resendSeconds}s)'
@@ -114,6 +124,8 @@ class VerificationStep extends StatelessWidget {
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             helperText: AppFlags.bypassOtp
                 ? 'Bypass actif: vous pouvez terminer sans code.'
+                : controller.isTemporaryOtpBypassAvailableForSelectedContact
+                ? 'Mode temporaire: entrez le code de secours.'
                 : 'Entrez le code reçu par e-mail ou SMS.',
           ),
           if (controller.verificationError != null) ...[

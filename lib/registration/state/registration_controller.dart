@@ -12,8 +12,6 @@ import '../models/verification_method.dart';
 import '../services/registration_repository.dart';
 import '../utils/registration_validators.dart';
 
-
-
 class RegistrationController extends ChangeNotifier {
   RegistrationController({required this.repository}) {
     _bindListeners();
@@ -136,6 +134,15 @@ class RegistrationController extends ChangeNotifier {
     return codeIsValid && !isVerifying && !isSubmitting;
   }
 
+  bool get isTemporaryOtpBypassAvailableForSelectedContact {
+    return _isTemporaryOtpBypassContactMatched();
+  }
+
+  bool get isOtpBypassActiveForSelectedContact {
+    return AppFlags.bypassOtp ||
+        isTemporaryOtpBypassAvailableForSelectedContact;
+  }
+
   void updateCurrency(String value) {
     currency = value;
     _notify();
@@ -215,7 +222,7 @@ class RegistrationController extends ChangeNotifier {
     if (isSendingCode || resendSeconds > 0) {
       return;
     }
-    if (AppFlags.bypassOtp) {
+    if (isOtpBypassActiveForSelectedContact) {
       verificationError = null;
       verificationSent = true;
       _startResendTimer();
@@ -254,7 +261,10 @@ class RegistrationController extends ChangeNotifier {
       return false;
     }
 
-    if (!AppFlags.bypassOtp) {
+    final shouldSkipOtpVerification =
+        AppFlags.bypassOtp || _isTemporaryOtpBypassCodeValid();
+
+    if (!shouldSkipOtpVerification) {
       isVerifying = true;
       _notify();
 
@@ -374,6 +384,36 @@ class RegistrationController extends ChangeNotifier {
       }
       _notify();
     });
+  }
+
+  bool _isTemporaryOtpBypassCodeValid() {
+    if (!_isTemporaryOtpBypassContactMatched()) {
+      return false;
+    }
+    final enteredCode = verificationCodeController.text.trim();
+    return enteredCode.isNotEmpty &&
+        enteredCode == AppFlags.temporaryOtpBypassCode;
+  }
+
+  bool _isTemporaryOtpBypassContactMatched() {
+    if (!AppFlags.temporaryOtpBypassConfigured) {
+      return false;
+    }
+    if (verificationMethod == VerificationMethod.email) {
+      final configuredEmail = AppFlags.temporaryOtpBypassEmail;
+      if (configuredEmail.isEmpty) {
+        return false;
+      }
+      return emailController.text.trim().toLowerCase() == configuredEmail;
+    }
+    final configuredPhone = AppFlags.temporaryOtpBypassPhone;
+    if (configuredPhone.isEmpty) {
+      return false;
+    }
+    final currentPhone = RegistrationValidators.normalizePhone(
+      phoneController.text,
+    );
+    return currentPhone == configuredPhone;
   }
 
   @override
