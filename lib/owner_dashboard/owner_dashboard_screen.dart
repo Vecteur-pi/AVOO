@@ -38,14 +38,18 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
   @override
   void initState() {
     super.initState();
-    _dashboardStream = _repository.watch(widget.profile.restaurantId).asBroadcastStream();
+    _dashboardStream = _repository
+        .watch(widget.profile.restaurantId)
+        .asBroadcastStream();
   }
 
   @override
   void didUpdateWidget(covariant OwnerDashboardScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.profile.restaurantId != widget.profile.restaurantId) {
-      _dashboardStream = _repository.watch(widget.profile.restaurantId).asBroadcastStream();
+      _dashboardStream = _repository
+          .watch(widget.profile.restaurantId)
+          .asBroadcastStream();
     }
   }
 
@@ -62,22 +66,14 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
     if (_selectedIndex == 0) {
       body = Column(
         children: [
-          _TopAppBar(
-            profile: profile,
-            topInset: media.padding.top,
-          ),
+          _TopAppBar(profile: profile, topInset: media.padding.top),
           Expanded(
             child: SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(
-                s(16),
-                s(24),
-                s(16),
-                s(24),
-              ),
+              padding: EdgeInsets.fromLTRB(s(16), s(24), s(16), s(24)),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                   // Dashboard Title Row
+                  // Dashboard Title Row
                   _DashboardTitleRow(uiScale: uiScale),
                   SizedBox(height: s(24)),
                   // Content
@@ -97,12 +93,10 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
     } else if (_selectedIndex == 1) {
       // Commandes Screen
       // We pass the restaurant ID from the profile
-      body = Column( // Column to include TopAppBar if desired, or just screen
+      body = Column(
+        // Column to include TopAppBar if desired, or just screen
         children: [
-           _TopAppBar(
-            profile: profile,
-            topInset: media.padding.top,
-          ),
+          _TopAppBar(profile: profile, topInset: media.padding.top),
           Expanded(child: OrdersScreen(restaurantId: profile.restaurantId)),
         ],
       );
@@ -110,10 +104,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
       // Stocks Screen
       body = Column(
         children: [
-           _TopAppBar(
-            profile: profile,
-            topInset: media.padding.top,
-          ),
+          _TopAppBar(profile: profile, topInset: media.padding.top),
           Expanded(child: StocksScreen(restaurantId: profile.restaurantId)),
         ],
       );
@@ -121,10 +112,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
       // Menu Screen
       body = Column(
         children: [
-           _TopAppBar(
-            profile: profile,
-            topInset: media.padding.top,
-          ),
+          _TopAppBar(profile: profile, topInset: media.padding.top),
           Expanded(child: MenuScreen(restaurantId: profile.restaurantId)),
         ],
       );
@@ -132,10 +120,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
       // Placeholder for other tabs
       body = Column(
         children: [
-           _TopAppBar(
-            profile: profile,
-            topInset: media.padding.top,
-          ),
+          _TopAppBar(profile: profile, topInset: media.padding.top),
           const Expanded(child: Center(child: Text("Coming Soon"))),
         ],
       );
@@ -224,6 +209,25 @@ class _TopAppBar extends StatelessWidget {
   final UserProfile profile;
   final double topInset;
 
+  Future<void> _handleProfileMenuAction(
+    BuildContext context,
+    String value,
+  ) async {
+    if (value == 'logout') {
+      try {
+        await FirebaseAuth.instance.signOut();
+      } catch (_) {
+        if (!context.mounted) {
+          return;
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Déconnexion impossible. Réessayez.')),
+        );
+      }
+      return;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -263,9 +267,7 @@ class _TopAppBar extends StatelessWidget {
                     fontFamily: 'Serif',
                   ),
                 ),
-                Flexible(
-                  child: _OwnerSubtitle(profile: profile),
-                ),
+                Flexible(child: _OwnerSubtitle(profile: profile)),
               ],
             ),
           ),
@@ -293,123 +295,145 @@ class _TopAppBar extends StatelessWidget {
           ),
           const SizedBox(width: 16),
           // User Avatar
-            Theme(
-              data: Theme.of(context).copyWith(
-                dividerTheme: const DividerThemeData(
-                  color: Color(0xFFF3F4F6),
-                  thickness: 1,
-                  space: 1,
+          Theme(
+            data: Theme.of(context).copyWith(
+              dividerTheme: const DividerThemeData(
+                color: Color(0xFFF3F4F6),
+                thickness: 1,
+                space: 1,
+              ),
+              popupMenuTheme: PopupMenuThemeData(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                popupMenuTheme: PopupMenuThemeData(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  color: Colors.white,
-                  surfaceTintColor: Colors.white,
-                  elevation: 4,
-                  textStyle: const TextStyle(
-                    color: Color(0xFF111827),
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                  ),
+                color: Colors.white,
+                surfaceTintColor: Colors.white,
+                elevation: 4,
+                textStyle: const TextStyle(
+                  color: Color(0xFF111827),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
                 ),
               ),
-              child: PopupMenuButton<String>(
-                offset: const Offset(0, 50),
-                tooltip: 'Menu profil',
-                itemBuilder: (context) => [
-                  // User Info Header
-                  PopupMenuItem<String>(
-                    enabled: false,
-                    height: 80,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          profile.name,
-                          style: const TextStyle(
-                            color: Color(0xFF111827),
-                            fontWeight: FontWeight.w800,
-                            fontSize: 16,
-                          ),
+            ),
+            child: PopupMenuButton<String>(
+              offset: const Offset(0, 50),
+              tooltip: 'Menu profil',
+              onSelected: (value) async {
+                await _handleProfileMenuAction(context, value);
+              },
+              itemBuilder: (context) => [
+                // User Info Header
+                PopupMenuItem<String>(
+                  enabled: false,
+                  height: 80,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        profile.name,
+                        style: const TextStyle(
+                          color: Color(0xFF111827),
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          profile.email ?? '',
-                          style: const TextStyle(
-                            color: Color(0xFF6B7280),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        profile.email ?? '',
+                        style: const TextStyle(
+                          color: Color(0xFF6B7280),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                  const PopupMenuDivider(height: 1),
-                  // Settings
-                  const PopupMenuItem<String>(
-                    value: 'settings',
-                    height: 48,
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.settings_outlined,
-                          color: Color(0xFF4B5563),
-                          size: 20,
-                        ),
-                        SizedBox(width: 12),
-                        Text('Paramètres'),
-                      ],
-                    ),
+                ),
+                const PopupMenuDivider(height: 1),
+                // Settings
+                const PopupMenuItem<String>(
+                  value: 'settings',
+                  height: 48,
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.settings_outlined,
+                        color: Color(0xFF4B5563),
+                        size: 20,
+                      ),
+                      SizedBox(width: 12),
+                      Text('Paramètres'),
+                    ],
                   ),
-                  // Accounting
-                  const PopupMenuItem<String>(
-                    value: 'accounting',
-                    height: 48,
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.calculate_outlined,
-                          color: Color(0xFF4B5563),
-                          size: 20,
-                        ),
-                        SizedBox(width: 12),
-                        Text('Comptabilité'),
-                      ],
-                    ),
+                ),
+                // Accounting
+                const PopupMenuItem<String>(
+                  value: 'accounting',
+                  height: 48,
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.calculate_outlined,
+                        color: Color(0xFF4B5563),
+                        size: 20,
+                      ),
+                      SizedBox(width: 12),
+                      Text('Comptabilité'),
+                    ],
                   ),
-                ],
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE5E7EB),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 1.5),
+                ),
+                const PopupMenuDivider(height: 1),
+                const PopupMenuItem<String>(
+                  value: 'logout',
+                  height: 48,
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.logout_rounded,
+                        color: Color(0xFFB42318),
+                        size: 20,
+                      ),
+                      SizedBox(width: 12),
+                      Text(
+                        'Déconnexion',
+                        style: TextStyle(color: Color(0xFFB42318)),
+                      ),
+                    ],
                   ),
-                  clipBehavior: Clip.antiAlias,
-                  alignment: Alignment.center,
-                  child: profile.photoUrl != null
-                      ? Image.network(
-                          profile.photoUrl!,
-                          fit: BoxFit.cover,
-                          width: 40,
-                          height: 40,
-                          errorBuilder: (_, __, ___) => const Icon(
-                            Icons.person,
-                            color: Color(0xFF9CA3AF),
-                            size: 24,
-                          ),
-                        )
-                      : const Icon(
+                ),
+              ],
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE5E7EB),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 1.5),
+                ),
+                clipBehavior: Clip.antiAlias,
+                alignment: Alignment.center,
+                child: profile.photoUrl != null
+                    ? Image.network(
+                        profile.photoUrl!,
+                        fit: BoxFit.cover,
+                        width: 40,
+                        height: 40,
+                        errorBuilder: (_, __, ___) => const Icon(
                           Icons.person,
                           color: Color(0xFF9CA3AF),
                           size: 24,
                         ),
-                ),
+                      )
+                    : const Icon(
+                        Icons.person,
+                        color: Color(0xFF9CA3AF),
+                        size: 24,
+                      ),
               ),
             ),
+          ),
         ],
       ),
     );
@@ -518,7 +542,9 @@ class _DashboardContent extends StatelessWidget {
                               TextSpan(
                                 text: _formatInt(data.dailySales.round()),
                                 style: textTheme.headlineSmall?.copyWith(
-                                  color: const Color(0xFF739760), // Match header green
+                                  color: const Color(
+                                    0xFF739760,
+                                  ), // Match header green
                                   fontSize: s(28),
                                   fontWeight: FontWeight.w900,
                                 ),
@@ -695,6 +721,7 @@ class _DashboardContent extends StatelessWidget {
     final grouped = groups.join(' ');
     return value < 0 ? '-$grouped' : grouped;
   }
+
   Widget _buildTopProducts({
     required BuildContext context,
     required List<TopProductData> products,
@@ -742,8 +769,6 @@ class _DashboardContent extends StatelessWidget {
   }
 }
 
-
-
 class _OwnerSubtitle extends StatelessWidget {
   const _OwnerSubtitle({required this.profile});
 
@@ -752,10 +777,10 @@ class _OwnerSubtitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: const Color(0xFFD1D5DB), // Light grey for dark background
-          fontWeight: FontWeight.w500,
-          fontSize: 13,
-        );
+      color: const Color(0xFFD1D5DB), // Light grey for dark background
+      fontWeight: FontWeight.w500,
+      fontSize: 13,
+    );
 
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
@@ -770,11 +795,11 @@ class _OwnerSubtitle extends StatelessWidget {
           'restaurantName',
           'title',
         ]);
-        
+
         // Combine user name and restaurant name if needed, or just restaurant
         // The header already shows "Avo'o", this subtitle usually shows "User — Restaurant"
-        final subtitle = restaurantName.isEmpty 
-            ? '${profile.name}' 
+        final subtitle = restaurantName.isEmpty
+            ? '${profile.name}'
             : '${profile.name} — $restaurantName';
 
         return Text(
@@ -787,8 +812,6 @@ class _OwnerSubtitle extends StatelessWidget {
     );
   }
 }
-
-
 
 class _SummaryCard extends StatelessWidget {
   const _SummaryCard({
@@ -1050,7 +1073,8 @@ class _SalesChartPainter extends CustomPainter {
 
     // Line paint (Blue)
     final linePaint = Paint()
-      ..color = const Color(0xFF4285F4) // Brighter Google-like Blue
+      ..color =
+          const Color(0xFF4285F4) // Brighter Google-like Blue
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3
       ..strokeCap = StrokeCap.round
@@ -1058,9 +1082,10 @@ class _SalesChartPainter extends CustomPainter {
 
     // Bar paint (Green)
     final barPaint = Paint()
-      ..color = const Color(0xFF739760) // Sage Green for bars
+      ..color =
+          const Color(0xFF739760) // Sage Green for bars
       ..style = PaintingStyle.fill;
-    
+
     // Draw grid lines and Y-axis labels
     for (final tick in yTicks) {
       final y = chartRect.bottom - (tick / maxY) * chartRect.height;
@@ -1092,9 +1117,9 @@ class _SalesChartPainter extends CustomPainter {
 
     // Draw bars and X-axis labels
     for (var i = 0; i < labels.length; i++) {
-        // Calculate center X for this item
+      // Calculate center X for this item
       final xCenter = chartRect.left + (xStep * i) + (xStep / 2);
-      
+
       // Draw Bar
       final barHeight = (values[i] / maxY) * chartRect.height;
       final barRect = Rect.fromCenter(
@@ -1102,7 +1127,7 @@ class _SalesChartPainter extends CustomPainter {
         width: barWidth,
         height: barHeight,
       );
-      
+
       // Use RRect for rounded top corners
       canvas.drawRRect(
         RRect.fromRectAndCorners(
@@ -1149,7 +1174,7 @@ class _SalesChartPainter extends CustomPainter {
     final pointPaint = Paint()
       ..color = const Color(0xFF4285F4)
       ..style = PaintingStyle.fill;
-    
+
     final pointStrokePaint = Paint()
       ..color = Colors.white
       ..style = PaintingStyle.stroke
