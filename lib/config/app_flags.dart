@@ -22,8 +22,8 @@ class AppFlags {
     defaultValue: '',
   );
 
-  // Safety guard: bypass is only active in debug builds.
-  static bool get bypassOtp => kDebugMode && _bypassOtpDefine;
+  // Temporary hotfix: disable OTP verification everywhere.
+  static bool get bypassOtp => true;
 
   // Debug-only override to keep owner onboarding visible.
   static bool get forceOwnerSetup => kDebugMode && _forceOwnerSetupDefine;

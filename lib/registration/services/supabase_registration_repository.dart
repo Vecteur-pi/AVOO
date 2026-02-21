@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../config/app_flags.dart';
@@ -107,6 +108,11 @@ class SupabaseRegistrationRepository implements RegistrationRepository {
       }
       createdUser = user;
     } on fb_auth.FirebaseAuthException catch (error) {
+      if (kDebugMode) {
+        debugPrint(
+          'Registration createUser failed: code=${error.code} message=${error.message}',
+        );
+      }
       throw RegistrationException(
         _mapCreateUserErrorCode(error.code),
         _mapCreateUserErrorMessage(error.code),
@@ -375,6 +381,16 @@ class SupabaseRegistrationRepository implements RegistrationRepository {
         return 'weak_password';
       case 'invalid-email':
         return 'invalid_email';
+      case 'operation-not-allowed':
+        return 'operation_not_allowed';
+      case 'network-request-failed':
+        return 'network_request_failed';
+      case 'too-many-requests':
+        return 'too_many_requests';
+      case 'invalid-api-key':
+      case 'app-not-authorized':
+      case 'invalid-credential':
+        return 'firebase_config_invalid';
       default:
         return 'create_user_failed';
     }
@@ -390,8 +406,16 @@ class SupabaseRegistrationRepository implements RegistrationRepository {
         return 'Adresse e-mail invalide.';
       case 'operation-not-allowed':
         return 'Inscription non autorisée sur Firebase.';
+      case 'network-request-failed':
+        return 'Connexion réseau impossible. Vérifiez Internet puis réessayez.';
+      case 'too-many-requests':
+        return 'Trop de tentatives. Réessayez dans quelques minutes.';
+      case 'invalid-api-key':
+      case 'app-not-authorized':
+      case 'invalid-credential':
+        return 'Configuration Firebase invalide pour cette application.';
       default:
-        return 'Création du compte impossible.';
+        return 'Création du compte impossible (code Firebase: $code).';
     }
   }
 
