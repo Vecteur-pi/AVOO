@@ -11,6 +11,12 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == uid;
     }
 
+    function authEmailLower() {
+      return signedIn() && request.auth.token.email is string
+        ? request.auth.token.email.lower()
+        : "";
+    }
+
     function memberPath(restaurantId) {
       return /databases/$(database)/documents/restaurants/$(restaurantId)/members/$(request.auth.uid);
     }
@@ -27,6 +33,22 @@ service cloud.firestore {
 
     function isOwner(restaurantId) {
       return isActiveMember(restaurantId) && memberRole(restaurantId) == "owner";
+    }
+
+    function isStaffAdmin(restaurantId) {
+      return isActiveMember(restaurantId)
+        && (
+          memberRole(restaurantId) in [
+            "owner",
+            "admin",
+            "manager",
+            "owner_manager",
+            "gerant",
+            "gérant",
+            "proprietaire",
+            "propriétaire"
+          ]
+        );
     }
 
     function isStaff(restaurantId) {
@@ -53,6 +75,38 @@ service cloud.firestore {
         );
     }
 
+    function invitationPath(restaurantId, invitationId) {
+      return /databases/$(database)/documents/restaurants/$(restaurantId)/staff_invitations/$(invitationId);
+    }
+
+    function emailMatchesCurrentUser(email, emailLower) {
+      return signedIn()
+        && (
+          (emailLower is string && emailLower == authEmailLower())
+          || (email is string && email.lower() == authEmailLower())
+        );
+    }
+
+    function hasValidInvitationForSelf(restaurantId, invitationId) {
+      return signedIn()
+        && invitationId is string
+        && invitationId.size() > 0
+        && exists(invitationPath(restaurantId, invitationId))
+        && get(invitationPath(restaurantId, invitationId)).data.status == "pending"
+        && emailMatchesCurrentUser(
+          get(invitationPath(restaurantId, invitationId)).data.email,
+          get(invitationPath(restaurantId, invitationId)).data.email_lower
+        )
+        && (
+          !(get(invitationPath(restaurantId, invitationId)).data.expires_at is timestamp)
+          || get(invitationPath(restaurantId, invitationId)).data.expires_at > request.time
+        )
+        && (
+          !(get(invitationPath(restaurantId, invitationId)).data.expiresAt is timestamp)
+          || get(invitationPath(restaurantId, invitationId)).data.expiresAt > request.time
+        );
+    }
+
     // ---- Default deny ----
     match /{document=**} {
       allow read, write: if false;
@@ -65,12 +119,21 @@ service cloud.firestore {
 
       allow create: if isSelf(uid)
         && request.resource.data.uid == uid
-        && request.resource.data.role == "owner"
         && request.resource.data.active == true
-        && request.resource.data.restaurant_id is string;
+        && request.resource.data.restaurant_id is string
+        && (
+          request.resource.data.role == "owner"
+          || hasValidInvitationForSelf(
+            request.resource.data.restaurant_id,
+            request.resource.data.invitation_id
+          )
+          || hasValidInvitationForSelf(
+            request.resource.data.restaurant_id,
+            request.resource.data.invitationId
+          )
+        );
 
-      allow update: if (isSelf(uid)
-        && request.resource.data.restaurant_id == resource.data.restaurant_id)
+      allow update: if isSelf(uid)
         || isOwner(resource.data.restaurant_id);
 
       allow delete: if isOwner(resource.data.restaurant_id);
@@ -94,15 +157,87 @@ service cloud.firestore {
       match /members/{uid} {
         allow read: if isActiveMember(restaurantId);
 
-        allow create: if isOwner(restaurantId) || isOwnerSeedMember(restaurantId, uid);
-        allow delete: if isOwner(restaurantId);
+          allow create: if isStaffAdmin(restaurantId)
+            || isOwnerSeedMember(restaurantId, uid)
+            || (
+              signedIn()
+              && uid == request.auth.uid
+              && request.resource.data.uid == request.auth.uid
+              && request.resource.data.active == true
+              && (
+                request.resource.data.restaurant_id == restaurantId
+                || request.resource.data.restaurantId == restaurantId
+              )
+              && emailMatchesCurrentUser(
+                request.resource.data.email,
+                request.resource.data.email_lower
+              )
+              && (
+                hasValidInvitationForSelf(
+                  restaurantId,
+                  request.resource.data.invitation_id
+                )
+                || hasValidInvitationForSelf(
+                  restaurantId,
+                  request.resource.data.invitationId
+                )
+              )
+            );
+          // Allow joining members to overwrite the stub document with their full data
+          allow update: if isStaffAdmin(restaurantId)
+            || (
+              signedIn()
+              && uid == request.auth.uid
+              && (
+                request.resource.data.restaurant_id == restaurantId
+                || request.resource.data.restaurantId == restaurantId
+              )
+              && request.resource.data.active == true
+              && emailMatchesCurrentUser(
+                request.resource.data.email,
+                request.resource.data.email_lower
+              )
+              && (
+                hasValidInvitationForSelf(
+                  restaurantId,
+                  request.resource.data.invitation_id
+                )
+                || hasValidInvitationForSelf(
+                  restaurantId,
+                  request.resource.data.invitationId
+                )
+              )
+            );
+        allow delete: if isStaffAdmin(restaurantId);
+      }
 
-        allow update: if isOwner(restaurantId)
+      // Staff invitations (Spark-friendly manual email flow)
+      match /staff_invitations/{inviteId} {
+        allow read: if isStaffAdmin(restaurantId)
+          || emailMatchesCurrentUser(resource.data.email, resource.data.email_lower);
+
+        allow create, delete: if isStaffAdmin(restaurantId);
+
+        allow update: if isStaffAdmin(restaurantId)
           || (
             signedIn()
-            && uid == request.auth.uid
+            && resource.data.status == "pending"
+            && emailMatchesCurrentUser(resource.data.email, resource.data.email_lower)
+            && request.resource.data.status == "accepted"
+            && (
+              request.resource.data.accepted_by == request.auth.uid
+              || request.resource.data.acceptedBy == request.auth.uid
+            )
             && request.resource.data.diff(resource.data).changedKeys()
-                .hasOnly(["display_name", "updated_at"])
+                .hasOnly([
+                  "status",
+                  "accepted_at",
+                  "acceptedAt",
+                  "accepted_by",
+                  "acceptedBy",
+                  "updated_at",
+                  "updatedAt"
+                ])
           );
       }
 
@@ -135,18 +270,55 @@ service cloud.firestore {
       match /users/{uid} {
         allow read: if isOwner(restaurantId) || isSelf(uid);
 
-        allow create: if isOwner(restaurantId) || isOwnerSeedMember(restaurantId, uid);
-        allow delete: if isOwner(restaurantId);
-
+        allow create: if isOwner(restaurantId)
+          || isOwnerSeedMember(restaurantId, uid)
+          || (
+            signedIn()
+            && uid == request.auth.uid
+            && request.resource.data.uid == request.auth.uid
+            && request.resource.data.active == true
+            && (
+              request.resource.data.restaurant_id == restaurantId
+              || request.resource.data.restaurantId == restaurantId
+            )
+            && emailMatchesCurrentUser(
+              request.resource.data.email,
+              request.resource.data.email_lower
+            )
+            && (
+              hasValidInvitationForSelf(
+                restaurantId,
+                request.resource.data.invitation_id
+              )
+              || hasValidInvitationForSelf(
+                restaurantId,
+                request.resource.data.invitationId
+              )
+            )
+          );
+          
         allow update: if signedIn()
           && uid == request.auth.uid
           && (
-            request.resource.data.restaurant_id == resource.data.restaurant_id
-            || request.resource.data.restaurantId == resource.data.restaurantId
+            request.resource.data.restaurant_id == restaurantId
+            || request.resource.data.restaurantId == restaurantId
           )
-          && request.resource.data.active == resource.data.active
-          && request.resource.data.diff(resource.data).changedKeys()
-              .hasOnly(["display_name", "phone", "updated_at"]);
+          && request.resource.data.active == true
+          && emailMatchesCurrentUser(
+            request.resource.data.email,
+            request.resource.data.email_lower
+          )
+          && (
+            hasValidInvitationForSelf(
+              restaurantId,
+              request.resource.data.invitation_id
+            )
+            || hasValidInvitationForSelf(
+              restaurantId,
+              request.resource.data.invitationId
+            )
+          );
+        allow delete: if isOwner(restaurantId);
       }
 
       // Menu

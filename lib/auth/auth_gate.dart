@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../login/login_screen.dart';
 import '../owner_dashboard/owner_dashboard_screen.dart';
 import '../owner_setup/owner_setup_gate.dart';
+import '../server_dashboard/server_dashboard_screen.dart';
 import '../theme/avoo_theme.dart';
 import 'user_profile.dart';
 import 'user_provider.dart';
@@ -62,7 +63,7 @@ class AuthGate extends StatelessWidget {
                     dashboard: OwnerDashboardScreen(profile: profile),
                   );
                 }
-                return _SignedInScreen(profile: profile);
+                return ServerDashboardScreen(profile: profile);
               },
             );
         }
@@ -119,53 +120,6 @@ class _MissingProfileScreen extends StatelessWidget {
   }
 }
 
-class _SignedInScreen extends StatelessWidget {
-  const _SignedInScreen({required this.profile});
-
-  final UserProfile profile;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AvooColors.bone,
-      appBar: AppBar(
-        title: const Text('Accueil'),
-        backgroundColor: AvooColors.bone,
-        foregroundColor: AvooColors.ink,
-        elevation: 0,
-        actions: [
-          IconButton(
-            onPressed: () => context.read<UserProvider>().signOut(),
-            icon: const Icon(Icons.logout),
-            tooltip: 'Se déconnecter',
-          ),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Bonjour ${profile.name},',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              "Vous êtes connecté, mais les pages serveur ont été retirées de cette version.",
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () => context.read<UserProvider>().signOut(),
-              child: const Text('Se déconnecter'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 class _AccessDeniedScreen extends StatelessWidget {
   const _AccessDeniedScreen({required this.title, required this.message});

@@ -123,6 +123,8 @@ class UserProfileService {
     final normalized = role.toLowerCase().trim();
     return normalized == 'owner' ||
         normalized == 'admin' ||
+        normalized == 'owner_manager' ||
+        normalized == 'owner-manager' ||
         normalized == 'gerant' ||
         normalized == 'gérant' ||
         normalized == 'manager' ||

@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'firebase_options.dart';
 import 'auth/auth_gate.dart';
 import 'auth/user_provider.dart';
+import 'staff/ui/staff_invite_link_listener.dart';
 import 'theme/avoo_theme.dart';
 import 'supabase/supabase_config.dart';
 
@@ -17,9 +18,7 @@ Future<void> main() async {
       anonKey: SupabaseConfig.anonKey,
     );
   }
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const AvooApp());
 }
 
@@ -34,7 +33,7 @@ class AvooApp extends StatelessWidget {
         title: 'Avoo',
         debugShowCheckedModeBanner: false,
         theme: AvooTheme.light,
-        home: const AuthGate(),
+        home: const StaffInviteLinkListener(child: AuthGate()),
       ),
     );
   }

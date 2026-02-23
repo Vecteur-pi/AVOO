@@ -6,8 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../auth/user_profile.dart';
+import '../incidents/ui/incidents_screen.dart';
 import '../menu/ui/menu_screen.dart';
 import '../orders/ui/orders_screen.dart';
+import '../staff/ui/staff_team_screen.dart';
 import '../stocks/ui/stocks_screen.dart';
 import 'owner_dashboard_repository.dart';
 
@@ -81,7 +83,11 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                     stream: _dashboardStream,
                     builder: (context, snapshot) {
                       final data = snapshot.data ?? OwnerDashboardData.empty();
-                      return _DashboardContent(data: data, uiScale: uiScale);
+                      return _DashboardContent(
+                        data: data,
+                        uiScale: uiScale,
+                        restaurantId: profile.restaurantId,
+                      );
                     },
                   ),
                 ],
@@ -213,6 +219,20 @@ class _TopAppBar extends StatelessWidget {
     BuildContext context,
     String value,
   ) async {
+    if (value == 'team') {
+      await Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => StaffTeamScreen(profile: profile)),
+      );
+      return;
+    }
+
+    if (value == 'settings' || value == 'accounting') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Fonctionnalité bientôt disponible.')),
+      );
+      return;
+    }
+
     if (value == 'logout') {
       try {
         await FirebaseAuth.instance.signOut();
@@ -384,6 +404,21 @@ class _TopAppBar extends StatelessWidget {
                     ],
                   ),
                 ),
+                const PopupMenuItem<String>(
+                  value: 'team',
+                  height: 48,
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.groups_2_outlined,
+                        color: Color(0xFF4B5563),
+                        size: 20,
+                      ),
+                      SizedBox(width: 12),
+                      Text('Staff / Équipe'),
+                    ],
+                  ),
+                ),
                 const PopupMenuDivider(height: 1),
                 const PopupMenuItem<String>(
                   value: 'logout',
@@ -503,10 +538,15 @@ class _DashboardTitleRow extends StatelessWidget {
 }
 
 class _DashboardContent extends StatelessWidget {
-  const _DashboardContent({required this.data, required this.uiScale});
+  const _DashboardContent({
+    required this.data,
+    required this.uiScale,
+    required this.restaurantId,
+  });
 
   final OwnerDashboardData data;
   final double uiScale;
+  final String restaurantId;
 
   @override
   Widget build(BuildContext context) {
@@ -600,35 +640,64 @@ class _DashboardContent extends StatelessWidget {
                 ),
                 SizedBox(
                   width: cardWidth,
-                  child: _SummaryCard(
-                    title: 'INCIDENTS',
-                    headerColor: const Color(0xFF2D3B4F),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        RichText(
-                          text: TextSpan(
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) =>
+                              IncidentsScreen(restaurantId: restaurantId),
+                        ),
+                      );
+                    },
+                    child: _SummaryCard(
+                      title: 'INCIDENTS',
+                      headerColor: const Color(0xFF2D3B4F),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          RichText(
+                            text: TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: _formatInt(data.pendingIncidents),
+                                  style: textTheme.headlineSmall?.copyWith(
+                                    color: const Color(0xFF2D3B4F),
+                                    fontSize: s(28),
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: ' à valider',
+                                  style: textTheme.bodySmall?.copyWith(
+                                    color: const Color(0xFF9CA3AF),
+                                    fontSize: s(13),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              TextSpan(
-                                text: _formatInt(data.pendingIncidents),
-                                style: textTheme.headlineSmall?.copyWith(
-                                  color: const Color(0xFF2D3B4F),
-                                  fontSize: s(28),
-                                  fontWeight: FontWeight.w900,
+                              Text(
+                                'Voir tout',
+                                style: TextStyle(
+                                  color: const Color(0xFF739760),
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: s(11),
                                 ),
                               ),
-                              TextSpan(
-                                text: ' à valider',
-                                style: textTheme.bodySmall?.copyWith(
-                                  color: const Color(0xFF9CA3AF),
-                                  fontSize: s(13),
-                                  fontWeight: FontWeight.w600,
-                                ),
+                              Icon(
+                                Icons.arrow_forward_ios_rounded,
+                                size: s(10),
+                                color: const Color(0xFF739760),
                               ),
                             ],
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
