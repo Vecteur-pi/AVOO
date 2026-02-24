@@ -27,79 +27,86 @@ class UserProfileService {
     var permissionDenied = false;
     void markPermissionDenied() => permissionDenied = true;
 
-    final direct = await _tryDoc(
-      db.collection('users').doc(user.uid),
-      onPermissionDenied: markPermissionDenied,
-    );
-    final directData = direct?.data();
-    final restaurantId = _readRestaurantId(directData);
-    final directRole = _readString(
-      directData ?? const <String, dynamic>{},
-      const ['role', 'type', 'position'],
-      fallback: '',
-    );
-    final directName = _readString(
-      directData ?? const <String, dynamic>{},
-      const ['name', 'displayName', 'display_name', 'fullName'],
-      fallback: '',
-    );
-    if (restaurantId != null && restaurantId.isNotEmpty) {
-      if (isOwnerRole(directRole) && direct != null && direct.exists) {
-        return _fromDoc(
-          user,
-          direct,
-          restaurantId: restaurantId,
-          fallbackRole: directRole,
-          fallbackName: directName,
-        );
+    for (int attempt = 0; attempt < 4; attempt++) {
+      if (attempt > 0) {
+        await Future.delayed(const Duration(seconds: 1));
       }
+      permissionDenied = false;
 
-      final member = await _tryDoc(
-        db
-            .collection('restaurants')
-            .doc(restaurantId)
-            .collection('members')
-            .doc(user.uid),
+      final direct = await _tryDoc(
+        db.collection('users').doc(user.uid),
         onPermissionDenied: markPermissionDenied,
       );
-      if (member != null && member.exists) {
-        return _fromDoc(
-          user,
-          member,
-          restaurantId: restaurantId,
-          fallbackRole: directRole,
-          fallbackName: directName,
-        );
-      }
-
-      final restUser = await _tryDoc(
-        db
-            .collection('restaurants')
-            .doc(restaurantId)
-            .collection('users')
-            .doc(user.uid),
-        onPermissionDenied: markPermissionDenied,
+      final directData = direct?.data();
+      final restaurantId = _readRestaurantId(directData);
+      final directRole = _readString(
+        directData ?? const <String, dynamic>{},
+        const ['role', 'type', 'position'],
+        fallback: '',
       );
-      if (restUser != null && restUser.exists) {
-        return _fromDoc(
-          user,
-          restUser,
-          restaurantId: restaurantId,
-          fallbackRole: directRole,
-          fallbackName: directName,
-        );
-      }
+      final directName = _readString(
+        directData ?? const <String, dynamic>{},
+        const ['name', 'displayName', 'display_name', 'fullName'],
+        fallback: '',
+      );
+      if (restaurantId != null && restaurantId.isNotEmpty) {
+        if (isOwnerRole(directRole) && direct != null && direct.exists) {
+          return _fromDoc(
+            user,
+            direct,
+            restaurantId: restaurantId,
+            fallbackRole: directRole,
+            fallbackName: directName,
+          );
+        }
 
-      if (direct != null && direct.exists) {
-        return _fromDoc(
-          user,
-          direct,
-          restaurantId: restaurantId,
-          fallbackRole: directRole,
-          fallbackName: directName,
+        final member = await _tryDoc(
+          db
+              .collection('restaurants')
+              .doc(restaurantId)
+              .collection('members')
+              .doc(user.uid),
+          onPermissionDenied: markPermissionDenied,
         );
+        if (member != null && member.exists) {
+          return _fromDoc(
+            user,
+            member,
+            restaurantId: restaurantId,
+            fallbackRole: directRole,
+            fallbackName: directName,
+          );
+        }
+
+        final restUser = await _tryDoc(
+          db
+              .collection('restaurants')
+              .doc(restaurantId)
+              .collection('users')
+              .doc(user.uid),
+          onPermissionDenied: markPermissionDenied,
+        );
+        if (restUser != null && restUser.exists) {
+          return _fromDoc(
+            user,
+            restUser,
+            restaurantId: restaurantId,
+            fallbackRole: directRole,
+            fallbackName: directName,
+          );
+        }
+
+        if (direct != null && direct.exists) {
+          return _fromDoc(
+            user,
+            direct,
+            restaurantId: restaurantId,
+            fallbackRole: directRole,
+            fallbackName: directName,
+          );
+        }
       }
-    }
+    } // end attempts loop
 
     if (permissionDenied) {
       throw StateError(

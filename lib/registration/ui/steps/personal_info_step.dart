@@ -32,7 +32,7 @@ class _PersonalInfoStepState extends State<PersonalInfoStep> {
             autofillHints: const [AutofillHints.name],
             validator: RegistrationValidators.fullName,
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           RegistrationField(
             label: 'Email',
             icon: Icons.mail_outline,
@@ -43,7 +43,7 @@ class _PersonalInfoStepState extends State<PersonalInfoStep> {
             validator: RegistrationValidators.email,
             errorText: controller.emailUniqueError,
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           RegistrationField(
             label: 'Numéro de téléphone',
             icon: Icons.phone_outlined,
@@ -55,7 +55,7 @@ class _PersonalInfoStepState extends State<PersonalInfoStep> {
             helperText: 'Format international +241...',
             errorText: controller.phoneUniqueError,
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           RegistrationField(
             label: 'Mot de passe',
             icon: Icons.lock_outline,
@@ -76,7 +76,7 @@ class _PersonalInfoStepState extends State<PersonalInfoStep> {
               ),
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           RegistrationField(
             label: 'Pays / ville',
             icon: Icons.public_outlined,
@@ -85,32 +85,32 @@ class _PersonalInfoStepState extends State<PersonalInfoStep> {
             validator: RegistrationValidators.countryCity,
             helperText: 'Ex: Gabon / Libreville',
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           DropdownButtonFormField<String>(
             value: controller.currency,
             decoration: InputDecoration(
               hintText: 'Devise',
               prefixIcon: const Icon(
                 Icons.currency_exchange,
-                color: Color(0xFF6AAFA5),
+                color: Color(0xFF146D36),
               ),
               filled: true,
               fillColor: Colors.white,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 18,
-                vertical: 16,
+                vertical: 12,
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(24),
-                borderSide: const BorderSide(color: Color(0xFFB8D8D2), width: 1.2),
+                borderSide: const BorderSide(color: Color(0xFF146D36), width: 1.5),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(24),
-                borderSide: const BorderSide(color: Color(0xFF5CB3A5), width: 1.4),
+                borderSide: const BorderSide(color: Color(0xFF146D36), width: 2.0),
               ),
               errorBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(24),
-                borderSide: const BorderSide(color: Color(0xFFB42318), width: 1.3),
+                borderSide: const BorderSide(color: Color(0xFFB42318), width: 1.5),
               ),
             ),
             items: const [

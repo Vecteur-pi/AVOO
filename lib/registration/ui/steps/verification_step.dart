@@ -94,8 +94,8 @@ class VerificationStep extends StatelessWidget {
                       : 'Envoyer le code',
                 ),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF43B6A8),
-                  side: const BorderSide(color: Color(0xFF43B6A8)),
+                  foregroundColor: const Color(0xFF146D36),
+                  side: const BorderSide(color: Color(0xFF146D36)),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(22),
                   ),

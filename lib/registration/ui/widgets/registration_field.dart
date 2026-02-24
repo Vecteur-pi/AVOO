@@ -55,35 +55,35 @@ class RegistrationField extends StatelessWidget {
       decoration: InputDecoration(
         hintText: label,
         helperText: helperText,
-        prefixIcon: Icon(icon, color: const Color(0xFF6AAFA5)),
+        prefixIcon: Icon(icon, color: const Color(0xFF146D36)),
         suffixIcon: suffix,
         errorText: errorText,
         filled: true,
         fillColor: fillColor ?? Colors.white,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 18,
-          vertical: 16,
+          vertical: 12,
         ),
         floatingLabelBehavior: FloatingLabelBehavior.never,
         hintStyle: const TextStyle(
-          color: Color(0xFF7B8B88),
-          fontWeight: FontWeight.w600,
+          color: Color(0xFF374151),
+          fontWeight: FontWeight.w500,
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(24),
-          borderSide: const BorderSide(color: Color(0xFFB8D8D2), width: 1.2),
+          borderSide: const BorderSide(color: Color(0xFF146D36), width: 1.5),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(24),
-          borderSide: const BorderSide(color: Color(0xFF5CB3A5), width: 1.4),
+          borderSide: const BorderSide(color: Color(0xFF146D36), width: 2.0),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(24),
-          borderSide: const BorderSide(color: Color(0xFFB42318), width: 1.3),
+          borderSide: const BorderSide(color: Color(0xFFB42318), width: 1.5),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(24),
-          borderSide: const BorderSide(color: Color(0xFFB42318), width: 1.4),
+          borderSide: const BorderSide(color: Color(0xFFB42318), width: 2.0),
         ),
       ),
     );

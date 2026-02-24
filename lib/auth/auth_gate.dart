@@ -8,6 +8,7 @@ import '../server_dashboard/server_dashboard_screen.dart';
 import '../theme/avoo_theme.dart';
 import 'user_profile.dart';
 import 'user_provider.dart';
+import '../widgets/plate_bounce_loader.dart';
 
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
@@ -77,7 +78,12 @@ class _LoadingScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    return const Scaffold(
+      backgroundColor: Colors.white,
+      body: Center(
+        child: PlateBounceLoader(size: 140),
+      ),
+    );
   }
 }
 

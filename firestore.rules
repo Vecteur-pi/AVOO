@@ -32,7 +32,17 @@ service cloud.firestore {
     }
 
     function isOwner(restaurantId) {
-      return isActiveMember(restaurantId) && memberRole(restaurantId) == "owner";
+      return isActiveMember(restaurantId)
+        && (memberRole(restaurantId) in [
+          "owner",
+          "admin",
+          "manager",
+          "owner_manager",
+          "gerant",
+          "gérant",
+          "proprietaire",
+          "propriétaire"
+        ]);
     }
 
     function isStaffAdmin(restaurantId) {

@@ -59,9 +59,19 @@ class UserProvider extends ChangeNotifier {
       _status = AuthStatus.authenticated;
       _errorMessage = null;
     } catch (e) {
-      _status = AuthStatus.error;
-      _profile = null;
-      _errorMessage = e.toString();
+      final errorStr = e.toString();
+      if (errorStr.contains('Profil introuvable') || errorStr.contains('Permissions insuffisantes')) {
+        // Prevent the weird 'MissingProfileScreen' from persisting.
+        // Return them to unauthenticated and let LoginScreen show the snackbar.
+        await FirebaseAuth.instance.signOut();
+        _status = AuthStatus.unauthenticated;
+        _profile = null;
+        _errorMessage = null;
+      } else {
+        _status = AuthStatus.error;
+        _profile = null;
+        _errorMessage = errorStr;
+      }
     } finally {
       notifyListeners();
     }

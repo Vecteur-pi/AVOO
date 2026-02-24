@@ -154,7 +154,43 @@ class StaffTeamScreen extends StatelessWidget {
     if (confirm != true) return;
 
     try {
-      await _membersRef.doc(member.id).delete();
+      final batch = FirebaseFirestore.instance.batch();
+
+      // Delete the selected member document (restaurants/{id}/members/{uid})
+      batch.delete(_membersRef.doc(member.id));
+
+      // Delete from global users collection (users/{uid})
+      batch.delete(FirebaseFirestore.instance.collection('users').doc(member.id));
+
+      // Delete from restaurant users collection (restaurants/{id}/users/{uid})
+      batch.delete(
+        FirebaseFirestore.instance
+            .collection('restaurants')
+            .doc(profile.restaurantId)
+            .collection('users')
+            .doc(member.id),
+      );
+
+      if (member.email.isNotEmpty) {
+        // Delete any related member documents with the same email (e.g., old pending invitations)
+        final membersWithEmail = await _membersRef
+            .where('email', isEqualTo: member.email)
+            .get();
+        for (final doc in membersWithEmail.docs) {
+          batch.delete(doc.reference);
+        }
+
+        // Delete any related invitations in staff_invitations collection
+        final invitesWithEmail = await _invitationsRef
+            .where('email', isEqualTo: member.email)
+            .get();
+        for (final doc in invitesWithEmail.docs) {
+          batch.delete(doc.reference);
+        }
+      }
+
+      await batch.commit();
+
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('${member.name} a été supprimé.')),

@@ -19,10 +19,10 @@ class OwnerDashboardScreen extends StatefulWidget {
   final UserProfile profile;
 
   static const Color _pageBackground = Color(0xFFDCE7D5);
-  static const Color _topBackground = Color(0xFF1A4748);
+  static const Color _topBackground = Color(0xFF1C2434);
   static const Color _surface = Color(0xFFF5F6F3);
   static const Color _sage = Color(0xFF739760);
-  static const Color _ink = Color(0xFF101A2E);
+  static const Color _ink = Color(0xFF1C2434);
   static const Color _muted = Color(0xFF4A5568);
   static const Color _tealCard = Color(0xFF21494A);
   static const Color _danger = Color(0xFFF10012);
@@ -141,67 +141,74 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
       child: Scaffold(
         backgroundColor: const Color(0xFFF5F6F3),
         body: body,
-        bottomNavigationBar: NavigationBarTheme(
-          data: NavigationBarThemeData(
-            labelTextStyle: WidgetStateProperty.resolveWith((states) {
-              if (states.contains(WidgetState.selected)) {
+        extendBody: true,
+        bottomNavigationBar: ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          child: NavigationBarTheme(
+            data: NavigationBarThemeData(
+              indicatorShape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              labelTextStyle: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  );
+                }
                 return const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF9CA3AF),
+                  fontWeight: FontWeight.w600,
                   fontSize: 12,
                 );
-              }
-              return const TextStyle(
-                color: Color(0xFF9CA3AF),
-                fontWeight: FontWeight.w600,
-                fontSize: 12,
-              );
-            }),
-            iconTheme: WidgetStateProperty.resolveWith((states) {
-              if (states.contains(WidgetState.selected)) {
-                return const IconThemeData(color: Colors.white);
-              }
-              return const IconThemeData(color: Color(0xFF9CA3AF));
-            }),
-          ),
-          child: NavigationBar(
-            height: 65,
-            backgroundColor: const Color(0xFF2D3B4F),
-            indicatorColor: const Color(0xFF739760),
-            selectedIndex: _selectedIndex,
-            onDestinationSelected: (index) {
-              setState(() {
-                _selectedIndex = index;
-              });
-            },
-            destinations: const [
-              NavigationDestination(
-                icon: Icon(Icons.home_outlined),
-                selectedIcon: Icon(Icons.home_filled),
-                label: 'Dashboard',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.receipt_long_outlined),
-                selectedIcon: Icon(Icons.receipt_long),
-                label: 'Commandes',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.inventory_2_outlined),
-                selectedIcon: Icon(Icons.inventory_2),
-                label: 'Stocks',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.restaurant_outlined),
-                selectedIcon: Icon(Icons.restaurant),
-                label: 'Menu',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.bar_chart_outlined),
-                selectedIcon: Icon(Icons.bar_chart),
-                label: 'Rapports',
-              ),
-            ],
-            labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+              }),
+              iconTheme: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return const IconThemeData(color: Colors.white);
+                }
+                return const IconThemeData(color: Color(0xFF9CA3AF));
+              }),
+            ),
+            child: NavigationBar(
+              height: 75,
+              backgroundColor: const Color(0xFF1C2434),
+              indicatorColor: Colors.white.withOpacity(0.1),
+              selectedIndex: _selectedIndex,
+              onDestinationSelected: (index) {
+                setState(() {
+                  _selectedIndex = index;
+                });
+              },
+              destinations: const [
+                NavigationDestination(
+                  icon: Icon(Icons.grid_view_outlined),
+                  selectedIcon: Icon(Icons.grid_view_rounded),
+                  label: 'Tables',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.content_paste_outlined),
+                  selectedIcon: Icon(Icons.content_paste_rounded),
+                  label: 'Commandes',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.error_outline),
+                  selectedIcon: Icon(Icons.error_rounded),
+                  label: 'Stocks',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.restaurant_menu_outlined),
+                  selectedIcon: Icon(Icons.restaurant_menu_rounded),
+                  label: 'Menu',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.bar_chart_outlined),
+                  selectedIcon: Icon(Icons.bar_chart_rounded),
+                  label: 'Rapports',
+                ),
+              ],
+              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+            ),
           ),
         ),
       ),
@@ -252,7 +259,10 @@ class _TopAppBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      color: const Color(0xFF2D3B4F), // Dark Blue background
+      decoration: const BoxDecoration(
+        color: Color(0xFF1C2434), // Dark Blue background
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
+      ),
       padding: EdgeInsets.fromLTRB(16, topInset + 12, 16, 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -676,25 +686,6 @@ class _DashboardContent extends StatelessWidget {
                                 ),
                               ],
                             ),
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'Voir tout',
-                                style: TextStyle(
-                                  color: const Color(0xFF739760),
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: s(11),
-                                ),
-                              ),
-                              Icon(
-                                Icons.arrow_forward_ios_rounded,
-                                size: s(10),
-                                color: const Color(0xFF739760),
-                              ),
-                            ],
                           ),
                         ],
                       ),

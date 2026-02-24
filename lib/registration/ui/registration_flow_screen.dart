@@ -31,11 +31,12 @@ class _RegistrationFlowView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<RegistrationController>(
       builder: (context, controller, _) {
-        return Scaffold(
-          body: Stack(
-            children: [
-              const RegistrationBackground(),
-              SafeArea(
+        return Stack(
+          children: [
+            const RegistrationBackground(),
+            Scaffold(
+              backgroundColor: Colors.transparent,
+              body: SafeArea(
                 child: LayoutBuilder(
                   builder: (context, constraints) {
                     final width = constraints.maxWidth;
@@ -89,56 +90,43 @@ class _RegistrationFlowView extends StatelessWidget {
                       physics: const BouncingScrollPhysics(),
                       padding: EdgeInsets.fromLTRB(
                         horizontalPadding,
-                        18,
+                        12,
                         horizontalPadding,
-                        28,
+                        12,
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          Center(
+                            child: Image.asset(
+                              'assets/images/Logo.png',
+                              width: 200, // Reduced slightly to balance "make larger" and "fit on screen" constraints
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
                           Text(
                             'Créer votre compte',
-                            style: Theme.of(context).textTheme.displayMedium,
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                              color: const Color(0xFF146D36),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 28, // Slightly smaller font
+                            ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Étape ${controller.currentStep + 1} sur 3',
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(
-                                  color: AvooColors.navy.withOpacity(0.6),
-                                ),
-                          ),
-                          const SizedBox(height: 18),
+                          const SizedBox(height: 16),
                           _RegistrationProgressHeader(
                             currentStep: controller.currentStep,
                           ),
-                          const SizedBox(height: 18),
-                          Container(
-                            padding: const EdgeInsets.all(18),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(28),
-                              border: Border.all(
-                                color: const Color(0xFFB8D8D2),
-                                width: 1.2,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
-                                  blurRadius: 18,
-                                  offset: const Offset(0, 10),
-                                ),
-                              ],
-                            ),
-                            child: AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 260),
-                              child: _buildStepContent(
-                                controller: controller,
-                                key: ValueKey(controller.currentStep),
-                              ),
+                          const SizedBox(height: 16),
+                          AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 260),
+                            child: _buildStepContent(
+                              controller: controller,
+                              key: ValueKey(controller.currentStep),
                             ),
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 16),
                           GlowButton(
                             label: isLast ? 'Terminer' : 'Suivant',
                             onPressed: (!canProceed || isBusy)
@@ -166,7 +154,17 @@ class _RegistrationFlowView extends StatelessWidget {
                                           );
                                         }
                                       },
-                                child: const Text('Enregistrer le brouillon'),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: const Color(0xFF146D36),
+                                ),
+                                child: const Text(
+                                  'Enregistrer le brouillon',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    decoration: TextDecoration.underline,
+                                    decorationColor: Color(0xFF146D36),
+                                  ),
+                                ),
                               ),
                             ),
                           if (!isFirst)
@@ -183,10 +181,10 @@ class _RegistrationFlowView extends StatelessWidget {
                     );
                   },
                 ),
+                ),
               ),
             ],
-          ),
-        );
+          );
       },
     );
   }
@@ -256,26 +254,28 @@ class _StepDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isActive ? const Color(0xFF43B6A8) : const Color(0xFFB8D8D2);
+    final bgColor = isActive ? const Color(0xFF146D36) : Colors.white;
+    final textColor = isActive ? Colors.white : const Color(0xFF111827);
+
     return Column(
       children: [
         Container(
-          width: 28,
-          height: 28,
+          width: 32,
+          height: 32,
           decoration: BoxDecoration(
-            color: isActive ? color.withOpacity(0.18) : Colors.transparent,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: color, width: 1.6),
+            color: bgColor,
+            shape: BoxShape.circle,
+            border: Border.all(color: const Color(0xFF146D36), width: 1.5),
           ),
           child: Center(
             child: isComplete
-                ? const Icon(Icons.check, size: 16, color: Color(0xFF43B6A8))
+                ? const Icon(Icons.check, size: 18, color: Colors.white)
                 : Text(
                     '${index + 1}',
                     style: TextStyle(
-                      color: color,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
+                      color: textColor,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
                     ),
                   ),
           ),
@@ -284,8 +284,8 @@ class _StepDot extends StatelessWidget {
         Text(
           label,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: isActive ? const Color(0xFF2D6D66) : const Color(0xFF8FA9A5),
-            fontWeight: FontWeight.w700,
+            color: const Color(0xFF111827),
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],
@@ -302,11 +302,10 @@ class _StepConnector extends StatelessWidget {
   Widget build(BuildContext context) {
     return Expanded(
       child: Container(
-        height: 2,
-        margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 14),
-        decoration: BoxDecoration(
-          color: isActive ? const Color(0xFF43B6A8) : const Color(0xFFB8D8D2),
-          borderRadius: BorderRadius.circular(4),
+        height: 1.5,
+        margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+        decoration: const BoxDecoration(
+          color: Color(0xFF146D36),
         ),
       ),
     );
