@@ -11,16 +11,10 @@ class OrderItem {
   final String name;
   final int quantity;
 
-  OrderItem({
-    required this.name,
-    required this.quantity,
-  });
+  OrderItem({required this.name, required this.quantity});
 
   Map<String, dynamic> toMap() {
-    return {
-      'name': name,
-      'quantity': quantity,
-    };
+    return {'name': name, 'quantity': quantity};
   }
 
   factory OrderItem.fromMap(Map<String, dynamic> map) {
@@ -56,13 +50,14 @@ class OrderModel {
     final data = doc.data() as Map<String, dynamic>;
     return OrderModel(
       id: doc.id,
-      restaurantId: data['restaurantId'] ?? '',
-      tableNumber: data['tableNumber'] ?? '',
-      items: (data['items'] as List<dynamic>?)
+      restaurantId: _readRestaurantId(data),
+      tableNumber: _readTableNumber(data),
+      items:
+          (data['items'] as List<dynamic>?)
               ?.map((e) => OrderItem.fromMap(e as Map<String, dynamic>))
               .toList() ??
           [],
-      status: _parseStatus(data['status']),
+      status: _parseStatus(data['status']?.toString()),
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       expectedPreparationTimeMinutes:
@@ -94,6 +89,100 @@ class OrderModel {
       default:
         return OrderStatus.enCours;
     }
+  }
+
+  static String _readRestaurantId(Map<String, dynamic> data) {
+    for (final key in const ['restaurantId', 'restaurant_id', 'restaurant']) {
+      final value = data[key];
+      if (value is String && value.trim().isNotEmpty) {
+        return value.trim();
+      }
+    }
+    return '';
+  }
+
+  static String _readTableNumber(Map<String, dynamic> data) {
+    final raw = _firstValue(data, const [
+      'tableNumber',
+      'table_number',
+      'table',
+      'tableLabel',
+      'table_label',
+      'tableName',
+      'table_name',
+      'tableId',
+      'table_id',
+    ]);
+
+    final value = _asCleanString(raw);
+    if (value.isEmpty) {
+      return '';
+    }
+
+    final tableIdMatch = RegExp(
+      r'^table[_\-\s]*0*(\d+)$',
+      caseSensitive: false,
+    ).firstMatch(value);
+    if (tableIdMatch != null) {
+      return tableIdMatch.group(1)!;
+    }
+
+    final tableMatch = RegExp(
+      r'^table[\s:_-]*t?\s*0*(\d+)$',
+      caseSensitive: false,
+    ).firstMatch(value);
+    if (tableMatch != null) {
+      return tableMatch.group(1)!;
+    }
+
+    final tMatch = RegExp(
+      r'^t\s*0*(\d+)$',
+      caseSensitive: false,
+    ).firstMatch(value);
+    if (tMatch != null) {
+      return tMatch.group(1)!;
+    }
+
+    final numericMatch = RegExp(r'^0*(\d+)$').firstMatch(value);
+    if (numericMatch != null) {
+      return numericMatch.group(1)!;
+    }
+
+    return value;
+  }
+
+  static dynamic _firstValue(Map<String, dynamic> data, List<String> keys) {
+    for (final key in keys) {
+      final value = data[key];
+      if (value == null) {
+        continue;
+      }
+      if (value is String && value.trim().isEmpty) {
+        continue;
+      }
+      return value;
+    }
+    return null;
+  }
+
+  static String _asCleanString(dynamic value) {
+    if (value == null) {
+      return '';
+    }
+    if (value is String) {
+      return value.trim();
+    }
+    if (value is int) {
+      return value.toString();
+    }
+    if (value is num) {
+      final asInt = value.toInt();
+      if (value == asInt) {
+        return asInt.toString();
+      }
+      return value.toString();
+    }
+    return value.toString().trim();
   }
 
   OrderModel copyWith({

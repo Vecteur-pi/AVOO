@@ -11,23 +11,21 @@ import '../menu/ui/menu_screen.dart';
 import '../orders/ui/orders_screen.dart';
 import '../staff/ui/staff_team_screen.dart';
 import '../stocks/ui/stocks_screen.dart';
+import '../theme/avoo_theme.dart';
 import 'owner_dashboard_repository.dart';
+import 'sales_by_hour_chart.dart';
+
+bool _isManagerRole(String role) {
+  final normalized = role.toLowerCase().trim();
+  return normalized == 'manager' ||
+      normalized == 'gerant' ||
+      normalized == 'gérant';
+}
 
 class OwnerDashboardScreen extends StatefulWidget {
   const OwnerDashboardScreen({super.key, required this.profile});
 
   final UserProfile profile;
-
-  static const Color _pageBackground = Color(0xFFDCE7D5);
-  static const Color _topBackground = Color(0xFF1C2434);
-  static const Color _surface = Color(0xFFF5F6F3);
-  static const Color _sage = Color(0xFF739760);
-  static const Color _ink = Color(0xFF1C2434);
-  static const Color _muted = Color(0xFF4A5568);
-  static const Color _tealCard = Color(0xFF21494A);
-  static const Color _danger = Color(0xFFF10012);
-  static const Color _warning = Color(0xFFF55700);
-  static const Color _success = Color(0xFF099C3F);
 
   @override
   State<OwnerDashboardScreen> createState() => _OwnerDashboardScreenState();
@@ -35,6 +33,8 @@ class OwnerDashboardScreen extends StatefulWidget {
 
 class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
   final OwnerDashboardRepository _repository = OwnerDashboardRepository();
+  int _selectedIndex = 0;
+  final Set<int> _visitedTabs = <int>{0};
   late Stream<OwnerDashboardData> _dashboardStream;
 
   @override
@@ -55,8 +55,6 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
     }
   }
 
-  int _selectedIndex = 0;
-
   @override
   Widget build(BuildContext context) {
     final profile = widget.profile;
@@ -64,9 +62,8 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
     final uiScale = (media.size.width / 430).clamp(0.84, 1.0);
     double s(double value) => value * uiScale;
 
-    Widget body;
-    if (_selectedIndex == 0) {
-      body = Column(
+    final tabs = <Widget>[
+      Column(
         children: [
           _TopAppBar(profile: profile, topInset: media.padding.top),
           Expanded(
@@ -75,10 +72,8 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Dashboard Title Row
                   _DashboardTitleRow(uiScale: uiScale),
                   SizedBox(height: s(24)),
-                  // Content
                   StreamBuilder<OwnerDashboardData>(
                     stream: _dashboardStream,
                     builder: (context, snapshot) {
@@ -95,42 +90,42 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
             ),
           ),
         ],
-      );
-    } else if (_selectedIndex == 1) {
-      // Commandes Screen
-      // We pass the restaurant ID from the profile
-      body = Column(
-        // Column to include TopAppBar if desired, or just screen
+      ),
+      Column(
         children: [
           _TopAppBar(profile: profile, topInset: media.padding.top),
           Expanded(child: OrdersScreen(restaurantId: profile.restaurantId)),
         ],
-      );
-    } else if (_selectedIndex == 2) {
-      // Stocks Screen
-      body = Column(
-        children: [
-          _TopAppBar(profile: profile, topInset: media.padding.top),
-          Expanded(child: StocksScreen(restaurantId: profile.restaurantId)),
-        ],
-      );
-    } else if (_selectedIndex == 3) {
-      // Menu Screen
-      body = Column(
+      ),
+      Column(
         children: [
           _TopAppBar(profile: profile, topInset: media.padding.top),
           Expanded(child: MenuScreen(restaurantId: profile.restaurantId)),
         ],
-      );
-    } else {
-      // Placeholder for other tabs
-      body = Column(
+      ),
+      Column(
         children: [
           _TopAppBar(profile: profile, topInset: media.padding.top),
-          const Expanded(child: Center(child: Text("Coming Soon"))),
+          Expanded(child: StocksScreen(restaurantId: profile.restaurantId)),
         ],
-      );
-    }
+      ),
+      Column(
+        children: [
+          _TopAppBar(profile: profile, topInset: media.padding.top),
+          const Expanded(child: Center(child: Text('Coming Soon'))),
+        ],
+      ),
+    ];
+
+    final body = IndexedStack(
+      index: _selectedIndex,
+      children: List<Widget>.generate(tabs.length, (index) {
+        if (_visitedTabs.contains(index)) {
+          return tabs[index];
+        }
+        return const SizedBox.shrink();
+      }),
+    );
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
@@ -139,7 +134,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
         statusBarBrightness: Brightness.dark,
       ),
       child: Scaffold(
-        backgroundColor: const Color(0xFFF5F6F3),
+        backgroundColor: AvooColors.background,
         body: body,
         extendBody: true,
         bottomNavigationBar: ClipRRect(
@@ -172,34 +167,35 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
             ),
             child: NavigationBar(
               height: 75,
-              backgroundColor: const Color(0xFF1C2434),
-              indicatorColor: Colors.white.withOpacity(0.1),
+              backgroundColor: AvooColors.navy,
+              indicatorColor: AvooColors.green,
               selectedIndex: _selectedIndex,
               onDestinationSelected: (index) {
                 setState(() {
                   _selectedIndex = index;
+                  _visitedTabs.add(index);
                 });
               },
               destinations: const [
                 NavigationDestination(
-                  icon: Icon(Icons.grid_view_outlined),
-                  selectedIcon: Icon(Icons.grid_view_rounded),
-                  label: 'Tables',
+                  icon: Icon(Icons.home_outlined),
+                  selectedIcon: Icon(Icons.home_rounded),
+                  label: 'Dashboard',
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.content_paste_outlined),
-                  selectedIcon: Icon(Icons.content_paste_rounded),
+                  icon: Icon(Icons.receipt_long_outlined),
+                  selectedIcon: Icon(Icons.receipt_long_rounded),
                   label: 'Commandes',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.error_outline),
-                  selectedIcon: Icon(Icons.error_rounded),
-                  label: 'Stocks',
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.restaurant_menu_outlined),
                   selectedIcon: Icon(Icons.restaurant_menu_rounded),
                   label: 'Menu',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.inventory_2_outlined),
+                  selectedIcon: Icon(Icons.inventory_2_rounded),
+                  label: 'Stocks',
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.bar_chart_outlined),
@@ -257,10 +253,11 @@ class _TopAppBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final canAccessAccounting = !_isManagerRole(profile.role);
     return Container(
       width: double.infinity,
       decoration: const BoxDecoration(
-        color: Color(0xFF1C2434), // Dark Blue background
+        color: AvooColors.navy, // Dark Blue background
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
       ),
       padding: EdgeInsets.fromLTRB(16, topInset + 12, 16, 16),
@@ -316,7 +313,7 @@ class _TopAppBar extends StatelessWidget {
                   width: 8,
                   height: 8,
                   decoration: const BoxDecoration(
-                    color: Color(0xFFEF4444), // Red notification dot
+                    color: AvooColors.error, // Red notification dot
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -399,21 +396,22 @@ class _TopAppBar extends StatelessWidget {
                   ),
                 ),
                 // Accounting
-                const PopupMenuItem<String>(
-                  value: 'accounting',
-                  height: 48,
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.calculate_outlined,
-                        color: Color(0xFF4B5563),
-                        size: 20,
-                      ),
-                      SizedBox(width: 12),
-                      Text('Comptabilité'),
-                    ],
+                if (canAccessAccounting)
+                  const PopupMenuItem<String>(
+                    value: 'accounting',
+                    height: 48,
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.calculate_outlined,
+                          color: Color(0xFF4B5563),
+                          size: 20,
+                        ),
+                        SizedBox(width: 12),
+                        Text('Comptabilité'),
+                      ],
+                    ),
                   ),
-                ),
                 const PopupMenuItem<String>(
                   value: 'team',
                   height: 48,
@@ -455,7 +453,7 @@ class _TopAppBar extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: const Color(0xFFE5E7EB),
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 1.5),
+                  border: Border.all(color: AvooColors.green, width: 2.0),
                 ),
                 clipBehavior: Clip.antiAlias,
                 alignment: Alignment.center,
@@ -564,9 +562,7 @@ class _DashboardContent extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     final salesDelta = data.salesChangePercent;
     final isPositiveDelta = salesDelta >= 0;
-    final deltaColor = isPositiveDelta
-        ? OwnerDashboardScreen._success
-        : OwnerDashboardScreen._danger;
+    final deltaColor = isPositiveDelta ? AvooColors.success : AvooColors.error;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -582,7 +578,7 @@ class _DashboardContent extends StatelessWidget {
                   width: cardWidth,
                   child: _SummaryCard(
                     title: 'VENTES DU JOUR',
-                    headerColor: const Color(0xFF739760),
+                    headerColor: AvooColors.green,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -592,9 +588,7 @@ class _DashboardContent extends StatelessWidget {
                               TextSpan(
                                 text: _formatInt(data.dailySales.round()),
                                 style: textTheme.headlineSmall?.copyWith(
-                                  color: const Color(
-                                    0xFF739760,
-                                  ), // Match header green
+                                  color: AvooColors.green,
                                   fontSize: s(28),
                                   fontWeight: FontWeight.w900,
                                 ),
@@ -618,7 +612,7 @@ class _DashboardContent extends StatelessWidget {
                   width: cardWidth,
                   child: _SummaryCard(
                     title: 'TICKETS',
-                    headerColor: const Color(0xFF2D3B4F),
+                    headerColor: AvooColors.navy,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -628,7 +622,7 @@ class _DashboardContent extends StatelessWidget {
                               TextSpan(
                                 text: _formatInt(data.dailyTickets),
                                 style: textTheme.headlineSmall?.copyWith(
-                                  color: const Color(0xFF2D3B4F),
+                                  color: AvooColors.navy,
                                   fontSize: s(28),
                                   fontWeight: FontWeight.w900,
                                 ),
@@ -661,7 +655,7 @@ class _DashboardContent extends StatelessWidget {
                     },
                     child: _SummaryCard(
                       title: 'INCIDENTS',
-                      headerColor: const Color(0xFF2D3B4F),
+                      headerColor: AvooColors.navy,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -671,7 +665,7 @@ class _DashboardContent extends StatelessWidget {
                                 TextSpan(
                                   text: _formatInt(data.pendingIncidents),
                                   style: textTheme.headlineSmall?.copyWith(
-                                    color: const Color(0xFF2D3B4F),
+                                    color: AvooColors.navy,
                                     fontSize: s(28),
                                     fontWeight: FontWeight.w900,
                                   ),
@@ -696,7 +690,7 @@ class _DashboardContent extends StatelessWidget {
                   width: cardWidth,
                   child: _SummaryCard(
                     title: 'ALERTES STOCK',
-                    headerColor: const Color(0xFFDC6843),
+                    headerColor: AvooColors.warning,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -706,7 +700,7 @@ class _DashboardContent extends StatelessWidget {
                               TextSpan(
                                 text: _formatInt(data.lowStockProducts),
                                 style: textTheme.headlineSmall?.copyWith(
-                                  color: const Color(0xFFDC6843),
+                                  color: AvooColors.warning,
                                   fontSize: s(28),
                                   fontWeight: FontWeight.w900,
                                 ),
@@ -758,10 +752,7 @@ class _DashboardContent extends StatelessWidget {
               SizedBox(height: s(24)),
               SizedBox(
                 height: 240,
-                child: _SalesByHourChart(
-                  labels: data.hourlyLabels,
-                  values: data.hourlySales,
-                ),
+                child: SalesByHourChart(fallbackHourlySales: data.hourlySales),
               ),
             ],
           ),
@@ -790,7 +781,7 @@ class _DashboardContent extends StatelessWidget {
       return Text(
         'Aucune vente produit pour aujourd’hui.',
         style: Theme.of(context).textTheme.titleMedium?.copyWith(
-          color: OwnerDashboardScreen._muted,
+          color: AvooColors.muted,
           fontWeight: FontWeight.w700,
         ),
       );
@@ -972,9 +963,7 @@ class _TopProductRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final isPositive = growthPercent >= 0;
-    final growthColor = isPositive
-        ? const Color(0xFF008639)
-        : const Color(0xFFB42318);
+    final growthColor = isPositive ? AvooColors.success : AvooColors.error;
     final growthBackground = isPositive
         ? const Color(0xFFCBE9D1)
         : const Color(0xFFF7D7D2);
@@ -1003,14 +992,14 @@ class _TopProductRow extends StatelessWidget {
             width: 70,
             height: 70,
             decoration: BoxDecoration(
-              color: OwnerDashboardScreen._sage,
+              color: AvooColors.brandLight,
               borderRadius: BorderRadius.circular(18),
             ),
             alignment: Alignment.center,
             child: Text(
               '$rank',
               style: textTheme.headlineSmall?.copyWith(
-                color: Colors.white,
+                color: AvooColors.green,
                 fontWeight: FontWeight.w900,
                 fontSize: 30,
               ),
@@ -1071,239 +1060,6 @@ class _TopProductRow extends StatelessWidget {
         ],
       ),
     );
-  }
-}
-
-class _SalesByHourChart extends StatelessWidget {
-  const _SalesByHourChart({required this.labels, required this.values});
-
-  final List<String> labels;
-  final List<double> values;
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: _SalesChartPainter(values: values, labels: labels),
-      size: Size.infinite,
-    );
-  }
-}
-
-class _SalesChartPainter extends CustomPainter {
-  const _SalesChartPainter({required this.values, required this.labels});
-
-  final List<double> values;
-  final List<String> labels;
-
-  static const Color _axisColor = Color(0xFF6B7282);
-  static const Color _gridColor = Color(0xFFD4D8D5);
-  static const Color _lineColor = Color(0xFF6C945F);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (values.isEmpty || labels.isEmpty || values.length != labels.length) {
-      return;
-    }
-
-    final highest = values.fold<double>(0, math.max);
-    final step = _niceStep(highest <= 0 ? 1000 : highest / 4);
-    final maxY = step * 4;
-    final yTicks = [0.0, step, step * 2, step * 3, step * 4];
-    const leftPadding = 50.0;
-    const rightPadding = 14.0;
-    const topPadding = 16.0;
-    const bottomPadding = 46.0;
-
-    final chartRect = Rect.fromLTRB(
-      leftPadding,
-      topPadding,
-      size.width - rightPadding,
-      size.height - bottomPadding,
-    );
-
-    final gridPaint = Paint()
-      ..color = _gridColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
-
-    final axisPaint = Paint()
-      ..color = _axisColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-
-    // Line paint (Blue)
-    final linePaint = Paint()
-      ..color =
-          const Color(0xFF4285F4) // Brighter Google-like Blue
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-
-    // Bar paint (Green)
-    final barPaint = Paint()
-      ..color =
-          const Color(0xFF739760) // Sage Green for bars
-      ..style = PaintingStyle.fill;
-
-    // Draw grid lines and Y-axis labels
-    for (final tick in yTicks) {
-      final y = chartRect.bottom - (tick / maxY) * chartRect.height;
-      if (tick > 0) {
-        _drawDashedLine(
-          canvas,
-          Offset(chartRect.left, y),
-          Offset(chartRect.right, y),
-          gridPaint,
-        );
-      }
-      _drawText(
-        canvas,
-        _formatAxisLabel(tick),
-        Offset(4, y - 12),
-        const TextStyle(
-          color: Color(0xFF9CA3AF), // Lighter grey for axis
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-        ),
-      );
-    }
-
-    final xStep = labels.length == 1
-        ? 0.0
-        : chartRect.width / (labels.length); // Divide by N for bars
-
-    final barWidth = xStep * 0.7; // Bar width increased to 70% of step
-
-    // Draw bars and X-axis labels
-    for (var i = 0; i < labels.length; i++) {
-      // Calculate center X for this item
-      final xCenter = chartRect.left + (xStep * i) + (xStep / 2);
-
-      // Draw Bar
-      final barHeight = (values[i] / maxY) * chartRect.height;
-      final barRect = Rect.fromCenter(
-        center: Offset(xCenter, chartRect.bottom - (barHeight / 2)),
-        width: barWidth,
-        height: barHeight,
-      );
-
-      // Use RRect for rounded top corners
-      canvas.drawRRect(
-        RRect.fromRectAndCorners(
-          barRect,
-          topLeft: const Radius.circular(6),
-          topRight: const Radius.circular(6),
-        ),
-        barPaint,
-      );
-
-      // Draw Label
-      _drawText(
-        canvas,
-        labels[i],
-        Offset(xCenter - 14, chartRect.bottom + 12), // Centered label roughly
-        const TextStyle(
-          color: Color(0xFF9CA3AF),
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-        ),
-      );
-    }
-
-    // Draw Line Overlay
-    final points = <Offset>[];
-    for (var i = 0; i < values.length; i++) {
-      final xCenter = chartRect.left + (xStep * i) + (xStep / 2);
-      final y = chartRect.bottom - (values[i] / maxY) * chartRect.height;
-      points.add(Offset(xCenter, y));
-    }
-
-    if (points.length >= 2) {
-      final path = Path()..moveTo(points.first.dx, points.first.dy);
-      for (var i = 0; i < points.length - 1; i++) {
-        final current = points[i];
-        final next = points[i + 1];
-        // Use straight lines or cubic bezier. Cubic looks nicer.
-        final controlX = (current.dx + next.dx) / 2;
-        path.cubicTo(controlX, current.dy, controlX, next.dy, next.dx, next.dy);
-      }
-      canvas.drawPath(path, linePaint);
-    }
-
-    final pointPaint = Paint()
-      ..color = const Color(0xFF4285F4)
-      ..style = PaintingStyle.fill;
-
-    final pointStrokePaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
-
-    for (final point in points) {
-      canvas.drawCircle(point, 6, pointPaint);
-      canvas.drawCircle(point, 6, pointStrokePaint);
-    }
-  }
-
-  void _drawDashedLine(Canvas canvas, Offset start, Offset end, Paint paint) {
-    const dashLength = 6.0;
-    const dashSpace = 6.0;
-
-    final totalDistance = (end - start).distance;
-    if (totalDistance <= 0) {
-      return;
-    }
-    final direction = (end - start) / totalDistance;
-    var distance = 0.0;
-
-    while (distance < totalDistance) {
-      final segmentStart = start + (direction * distance);
-      final segmentEnd =
-          start + (direction * math.min(distance + dashLength, totalDistance));
-      canvas.drawLine(segmentStart, segmentEnd, paint);
-      distance += dashLength + dashSpace;
-    }
-  }
-
-  void _drawText(Canvas canvas, String value, Offset offset, TextStyle style) {
-    final textPainter = TextPainter(
-      text: TextSpan(text: value, style: style),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    textPainter.paint(canvas, offset);
-  }
-
-  @override
-  bool shouldRepaint(covariant _SalesChartPainter oldDelegate) {
-    return oldDelegate.values != values || oldDelegate.labels != labels;
-  }
-
-  String _formatAxisLabel(double value) {
-    if (value >= 1000000) {
-      return '${(value / 1000000).toStringAsFixed(1)}M';
-    }
-    if (value >= 1000) {
-      final kilo = value / 1000;
-      final asString = kilo % 1 == 0
-          ? kilo.toStringAsFixed(0)
-          : kilo.toStringAsFixed(1);
-      return '${asString}k';
-    }
-    return value.toStringAsFixed(0);
-  }
-
-  double _niceStep(double raw) {
-    if (raw <= 1000) return 1000;
-    if (raw <= 2500) return 2500;
-    if (raw <= 5000) return 5000;
-    if (raw <= 10000) return 10000;
-    if (raw <= 25000) return 25000;
-    if (raw <= 50000) return 50000;
-    if (raw <= 100000) return 100000;
-    if (raw <= 250000) return 250000;
-    if (raw <= 500000) return 500000;
-    return 1000000;
   }
 }
 

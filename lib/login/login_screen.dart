@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../auth/user_profile.dart';
 import '../registration/ui/registration_flow_screen.dart';
 import '../staff/ui/staff_invite_accept_screen.dart';
+import '../theme/avoo_theme.dart';
 import '../widgets/plate_bounce_loader.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -236,14 +237,14 @@ class _LoginScreenState extends State<LoginScreen> {
       return const Scaffold(
         backgroundColor: Colors.white,
         body: Center(
-          child: PlateBounceLoader(size: 140),
+          child: PlateBounceLoader(size: 180),
         ),
       );
     }
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
-      backgroundColor: const Color(0xFFF2F6EE),
+      backgroundColor: AvooColors.background,
       body: Stack(
         children: [
           const Positioned.fill(child: _LoginBackdrop()),
@@ -520,26 +521,26 @@ class _InviteAccessDialogContentState
                 filled: true,
                 fillColor: Colors.white,
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFFD1D5DB), width: 1.0),
+                  borderRadius: BorderRadius.circular(20),
+                  borderSide: const BorderSide(color: AvooColors.line, width: 1.0),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF146D36), width: 2.0),
+                  borderRadius: BorderRadius.circular(20),
+                  borderSide: const BorderSide(color: AvooColors.green, width: 2.0),
                 ),
                 errorText: _errorMessage,
                 errorStyle: GoogleFonts.poppins(
-                  color: const Color(0xFFDC2626),
+                  color: AvooColors.error,
                   fontWeight: FontWeight.w500,
                 ),
                 errorMaxLines: 2,
                 errorBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFFDC2626), width: 1.5),
+                  borderRadius: BorderRadius.circular(20),
+                  borderSide: const BorderSide(color: AvooColors.error, width: 1.5),
                 ),
                 focusedErrorBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFFDC2626), width: 2.0),
+                  borderRadius: BorderRadius.circular(20),
+                  borderSide: const BorderSide(color: AvooColors.error, width: 2.0),
                 ),
               ),
               onChanged: (_) {
@@ -591,14 +592,14 @@ class _InviteAccessDialogContentState
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _handleJoin,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF146D36),
+                      backgroundColor: AvooColors.green,
                       foregroundColor: Colors.white,
-                      disabledBackgroundColor: const Color(0xFF146D36).withOpacity(0.6),
+                      disabledBackgroundColor: AvooColors.green.withOpacity(0.6),
                       disabledForegroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       elevation: 0,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(20),
                       ),
                     ),
                     child: _isLoading
@@ -725,14 +726,13 @@ class _SoftField extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(21),
-        border: Border.all(color: const Color(0xFFC0D5C4), width: 1.5),
-        boxShadow: [
+        color: AvooColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
           BoxShadow(
-            color: const Color(0x33A0D2A6),
+            color: AvooColors.softShadow,
             blurRadius: 18,
-            offset: const Offset(0, 8),
+            offset: Offset(0, 8),
           ),
         ],
       ),
@@ -771,7 +771,26 @@ class _SoftField extends StatelessWidget {
             minWidth: 54,
             minHeight: 54,
           ),
-          border: InputBorder.none,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(20),
+            borderSide: const BorderSide(color: AvooColors.line, width: 1.5),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(20),
+            borderSide: const BorderSide(color: AvooColors.line, width: 1.5),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(20),
+            borderSide: const BorderSide(color: AvooColors.green, width: 2),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(20),
+            borderSide: const BorderSide(color: AvooColors.error, width: 1.5),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(20),
+            borderSide: const BorderSide(color: AvooColors.error, width: 2),
+          ),
           contentPadding: EdgeInsets.symmetric(
             horizontal: icon == null ? 24 : 20,
             vertical: 16,
@@ -789,19 +808,19 @@ class _OrDivider extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Expanded(child: Divider(color: Color(0xFFE5E7EB), thickness: 1)),
+        const Expanded(child: Divider(color: AvooColors.line, thickness: 1)),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Text(
             'ou',
             style: GoogleFonts.poppins(
-              color: const Color(0xFF6B7280),
+              color: AvooColors.muted,
               fontWeight: FontWeight.w400,
               fontSize: 14,
             ),
           ),
         ),
-        const Expanded(child: Divider(color: Color(0xFFE5E7EB), thickness: 1)),
+        const Expanded(child: Divider(color: AvooColors.line, thickness: 1)),
       ],
     );
   }
@@ -882,7 +901,7 @@ class _SocialButton extends StatelessWidget {
         style: OutlinedButton.styleFrom(
           backgroundColor: Colors.white,
           foregroundColor: const Color(0xFF1F2937),
-          side: const BorderSide(color: Color(0xFF146D36), width: 1.5),
+          side: const BorderSide(color: AvooColors.green, width: 1.5),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(29),
           ),

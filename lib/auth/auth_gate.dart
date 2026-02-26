@@ -81,7 +81,7 @@ class _LoadingScreen extends StatelessWidget {
     return const Scaffold(
       backgroundColor: Colors.white,
       body: Center(
-        child: PlateBounceLoader(size: 140),
+        child: PlateBounceLoader(size: 180),
       ),
     );
   }

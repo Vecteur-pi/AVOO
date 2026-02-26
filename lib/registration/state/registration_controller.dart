@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../config/app_flags.dart';
+import '../../sync/offline_sync_controller.dart';
 import '../models/personal_info.dart';
 import '../models/registration_payload.dart';
 import '../models/restaurant_info.dart';
@@ -13,11 +14,15 @@ import '../services/registration_repository.dart';
 import '../utils/registration_validators.dart';
 
 class RegistrationController extends ChangeNotifier {
-  RegistrationController({required this.repository}) {
+  RegistrationController({
+    required this.repository,
+    this.offlineSyncController,
+  }) {
     _bindListeners();
   }
 
   final RegistrationRepository repository;
+  final OfflineSyncController? offlineSyncController;
 
   final formKeyStep1 = GlobalKey<FormState>();
   final formKeyStep2 = GlobalKey<FormState>();
@@ -176,9 +181,11 @@ class RegistrationController extends ChangeNotifier {
     final emailUnique = await repository.checkEmailUnique(
       emailController.text.trim(),
     );
-    final phoneUnique = await repository.checkPhoneUnique(
-      RegistrationValidators.normalizePhone(phoneController.text),
-    );
+    final phoneUnique = phoneController.text.trim().isEmpty
+        ? true
+        : await repository.checkPhoneUnique(
+            RegistrationValidators.normalizePhone(phoneController.text),
+          );
 
     if (!emailUnique) {
       emailUniqueError = 'Cet e-mail est déjà utilisé.';
@@ -299,11 +306,45 @@ class RegistrationController extends ChangeNotifier {
 
     try {
       String? logoUrl;
+      String? deferredLogoPath;
+      var logoPendingUpload = false;
       if (logoFile != null) {
-        logoUrl = await repository.uploadLogo(File(logoFile!.path));
+        final logoPath = logoFile!.path;
+        final syncController = offlineSyncController;
+        final canQueueDeferredUpload = syncController != null;
+
+        if (canQueueDeferredUpload && !syncController.isOnline) {
+          logoPendingUpload = true;
+          deferredLogoPath = logoPath;
+        } else {
+          try {
+            logoUrl = await repository.uploadLogo(File(logoPath));
+          } on RegistrationException catch (error) {
+            final shouldQueueDeferredUpload =
+                canQueueDeferredUpload && error.code == 'upload_failed';
+            if (!shouldQueueDeferredUpload) {
+              rethrow;
+            }
+            logoPendingUpload = true;
+            deferredLogoPath = logoPath;
+          }
+        }
       }
-      final payload = _buildPayload(logoUrl: logoUrl);
-      await repository.submitRegistration(payload);
+      final payload = _buildPayload(
+        logoUrl: logoUrl,
+        logoPendingUpload: logoPendingUpload,
+      );
+      final submitResult = await repository.submitRegistration(payload);
+
+      if (logoPendingUpload &&
+          deferredLogoPath != null &&
+          offlineSyncController != null) {
+        await offlineSyncController!.enqueueRegistrationLogoUpload(
+          restaurantId: submitResult.restaurantId,
+          localImagePath: deferredLogoPath,
+        );
+      }
+
       isSubmitting = false;
       _notify();
       return true;
@@ -323,7 +364,10 @@ class RegistrationController extends ChangeNotifier {
     await repository.saveDraft(payload);
   }
 
-  RegistrationPayload _buildPayload({String? logoUrl}) {
+  RegistrationPayload _buildPayload({
+    String? logoUrl,
+    bool logoPendingUpload = false,
+  }) {
     return RegistrationPayload(
       owner: PersonalInfo(
         fullName: fullNameController.text.trim(),
@@ -344,6 +388,7 @@ class RegistrationController extends ChangeNotifier {
             : int.tryParse(tablesCountController.text.trim()),
         configureTablesLater: configureTablesLater,
         logoUrl: logoUrl,
+        logoPendingUpload: logoPendingUpload,
         schedule: scheduleController.text.trim().isEmpty
             ? null
             : scheduleController.text.trim(),

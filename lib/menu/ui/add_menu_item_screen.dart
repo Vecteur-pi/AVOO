@@ -3,10 +3,12 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 
 import '../models/menu_item.dart';
 import '../repository/menu_repository.dart';
 import '../services/menu_image_storage_service.dart';
+import '../../sync/offline_sync_controller.dart';
 
 class AddMenuItemScreen extends StatefulWidget {
   const AddMenuItemScreen({super.key, required this.restaurantId});
@@ -170,6 +172,7 @@ class _AddMenuItemScreenState extends State<AddMenuItemScreen> {
     }
 
     setState(() => _isSaving = true);
+    final syncController = context.read<OfflineSyncController>();
 
     try {
       final price = _parsePrice(_priceController.text)!;
@@ -179,13 +182,49 @@ class _AddMenuItemScreenState extends State<AddMenuItemScreen> {
       late final MenuCategory category;
 
       if (_isCreatingCustomItem) {
-        imageUrl = await _imageStorageService.uploadMenuImage(
-          File(_customImageFile!.path),
-          restaurantId: widget.restaurantId,
-        );
+        final imagePath = _customImageFile!.path;
         name = _nameController.text.trim();
         description = _descriptionController.text.trim();
         category = _selectedCategory;
+
+        if (!syncController.isOnline) {
+          final offlineItem = MenuItem(
+            id: '',
+            name: name,
+            description: description,
+            price: price,
+            imageUrl: '',
+            category: category,
+            quantityRemaining: 0,
+            status: MenuStockStatus.normal,
+            lastUpdated: DateTime.now(),
+          );
+
+          final itemId = await _repository.createMenuItem(
+            widget.restaurantId,
+            offlineItem,
+            extraFields: const {'pendingImageUpload': true},
+          );
+
+          syncController.noteFirestoreWriteQueued();
+          await syncController.enqueueMenuImageUpload(
+            restaurantId: widget.restaurantId,
+            itemId: itemId,
+            localImagePath: imagePath,
+          );
+
+          if (!mounted) return;
+          _showMessage(
+            '$name ajouté hors ligne. L’image sera synchronisée à la reconnexion.',
+          );
+          Navigator.pop(context);
+          return;
+        }
+
+        imageUrl = await _imageStorageService.uploadMenuImage(
+          File(imagePath),
+          restaurantId: widget.restaurantId,
+        );
       } else {
         final suggestion = _selectedSuggestion!;
         imageUrl = suggestion.imageUrl;
@@ -207,6 +246,9 @@ class _AddMenuItemScreenState extends State<AddMenuItemScreen> {
       );
 
       await _repository.addMenuItem(widget.restaurantId, item);
+      if (!syncController.isOnline) {
+        syncController.noteFirestoreWriteQueued();
+      }
 
       if (!mounted) return;
       _showMessage('$name ajouté au menu.');

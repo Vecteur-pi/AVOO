@@ -1,229 +1,324 @@
 import 'package:flutter/material.dart';
+
 import '../../models/stock_product.dart';
 
 class StockProductCard extends StatelessWidget {
   const StockProductCard({
     super.key,
     required this.product,
-    required this.onOrderTap,
+    required this.displayedQuantity,
+    required this.onIncrease,
+    required this.onDecrease,
+    required this.onMenuTap,
+    this.readOnly = false,
   });
 
   final StockProduct product;
-  final VoidCallback onOrderTap;
+  final double displayedQuantity;
+  final VoidCallback onIncrease;
+  final VoidCallback onDecrease;
+  final VoidCallback onMenuTap;
+  final bool readOnly;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isLowOrCritical = product.status == StockStatus.low ||
-        product.status == StockStatus.critical;
-        
+    final statusStyle = _statusFor(product.status);
+    final minStock = product.minStock <= 0 ? 1 : product.minStock;
+    final progressValue = (displayedQuantity / (minStock * 2)).clamp(0.0, 1.0);
+    final quantityLabel = _formatQuantity(displayedQuantity);
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(24),
       ),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header: Name & Badge
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF101828),
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      product.category.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF6B7280),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (product.isArchived) ...[
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Élément archivé',
+                        style: TextStyle(
+                          color: Color(0xFF6B7280),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: statusStyle.background,
+                  borderRadius: BorderRadius.circular(14),
+                ),
                 child: Text(
-                  product.name,
-                  style: theme.textTheme.titleMedium?.copyWith(
+                  statusStyle.label,
+                  style: TextStyle(
+                    color: statusStyle.foreground,
+                    fontSize: 12,
                     fontWeight: FontWeight.w800,
-                    color: const Color(0xFF111827),
-                    fontSize: 18,
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
-              _buildStatusBadge(),
+              const SizedBox(width: 2),
+              IconButton(
+                key: Key('stock_menu_${product.id}'),
+                onPressed: onMenuTap,
+                icon: const Icon(Icons.more_horiz_rounded),
+                color: const Color(0xFFC0C6D0),
+                tooltip: 'Actions',
+              ),
             ],
           ),
           const SizedBox(height: 12),
-
-          // Quantity
           Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                product.quantityRemaining.toInt().toString(),
-                style: theme.textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w900,
-                  color: const Color(0xFF111827),
-                  fontSize: 28,
-                  height: 1,
-                ),
+              _ActionButton(
+                key: Key('stock_minus_${product.id}'),
+                icon: Icons.remove_rounded,
+                onTap: readOnly || product.isArchived ? null : onDecrease,
+                activeColor: const Color(0xFFE9ECF0),
+                iconColor: const Color(0xFF6B7280),
               ),
-              const SizedBox(width: 8),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text(
-                  '${product.unit} restants',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: const Color(0xFF4B5563),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          
-          if (product.usageToday != null) ...[
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF3F6FA), // Light blue-grey background
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
+              const Spacer(),
+              Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
-                    Icons.trending_up_rounded,
-                    color: Color(0xFF2563EB), // Blue icon
-                    size: 18,
-                  ),
-                  const SizedBox(width: 8),
                   Text(
-                    '${product.usageToday?.toInt() ?? 0} ${product.usageUnit ?? product.unit} vendues aujourd\'hui',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: const Color(0xFF2563EB), // Blue text
-                      fontWeight: FontWeight.w600,
+                    quantityLabel,
+                    style: const TextStyle(
+                      color: Color(0xFF101828),
+                      fontSize: 32,
+                      fontWeight: FontWeight.w900,
+                      height: 1,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${product.unit} restants',
+                    style: const TextStyle(
+                      color: Color(0xFF4B5563),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
               ),
-            ),
-          ],
-
+              const Spacer(),
+              _ActionButton(
+                key: Key('stock_plus_${product.id}'),
+                icon: Icons.add_rounded,
+                onTap: readOnly || product.isArchived ? null : onIncrease,
+                activeColor: const Color(0xFF146D36),
+                iconColor: Colors.white,
+              ),
+            ],
+          ),
           const SizedBox(height: 16),
-          // Timestamp
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final totalWidth = constraints.maxWidth;
+              const gap = 4.0;
+              var filledWidth = totalWidth * progressValue;
+              var emptyWidth = totalWidth - filledWidth;
+
+              if (filledWidth > 0 && emptyWidth > 0) {
+                filledWidth -= gap / 2;
+                emptyWidth -= gap / 2;
+              }
+
+              return Row(
+                children: [
+                  if (filledWidth > 0)
+                    Container(
+                      height: 6,
+                      width: filledWidth >= 0 ? filledWidth : 0,
+                      decoration: BoxDecoration(
+                        color: statusStyle.progress,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                  if (filledWidth > 0 && emptyWidth > 0)
+                    const SizedBox(width: gap),
+                  if (emptyWidth > 0)
+                    Container(
+                      height: 6,
+                      width: emptyWidth >= 0 ? emptyWidth : 0,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE9EBF0),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 10),
           Row(
             children: [
               const Icon(
-                Icons.access_time_rounded,
+                Icons.trending_up_rounded,
+                color: Color(0xFF9CA3AF),
                 size: 16,
-                color: Color(0xFF6B7280),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 4),
               Expanded(
                 child: Text(
-                  'Actualisé aujourd\'hui ${_formatTime(product.lastUpdated)} | il y a ${_getRelativeTime(product.lastUpdated)}',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFF6B7280),
+                  'Seuil: ${_formatQuantity(product.minStock)} ${product.unit}',
+                  style: const TextStyle(
+                    color: Color(0xFF9CA3AF),
+                    fontSize: 12,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
+              const SizedBox(width: 8),
+              const Icon(
+                Icons.access_time_rounded,
+                color: Color(0xFF9CA3AF),
+                size: 14,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'Actu. ${_formatTime(product.lastUpdated)}',
+                style: const TextStyle(
+                  color: Color(0xFF9CA3AF),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ],
           ),
-
-          if (isLowOrCritical) ...[
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 48,
-              child: ElevatedButton(
-                onPressed: onOrderTap,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF739760), // Sage green
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  textStyle: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                  ),
-                ),
-                child: const Text('Commander maintenant'),
-              ),
-            ),
-          ]
         ],
       ),
     );
   }
 
-  Widget _buildStatusBadge() {
-    Color bgColor;
-    Color textColor;
-    String label;
-    IconData? icon;
-
-    switch (product.status) {
+  static _StatusStyle _statusFor(StockStatus status) {
+    switch (status) {
       case StockStatus.normal:
-        bgColor = const Color(0xFFDEF7EC); // Light green
-        textColor = const Color(0xFF03543F); // Dark green
-        label = 'Normal';
-        break;
+        return const _StatusStyle(
+          label: 'Normal',
+          background: Color(0xFFD4F2E2),
+          foreground: Color(0xFF0E7A4A),
+          progress: Color(0xFF2AA86A),
+        );
       case StockStatus.low:
-        bgColor = const Color(0xFFFEF3C7); // Light amber/orange background
-        textColor = const Color(0xFFD97706); // Amber text
-        label = 'Niveau faible';
-        icon = Icons.circle;
-        break;
+        return const _StatusStyle(
+          label: 'Faible',
+          background: Color(0xFFFBEFB8),
+          foreground: Color(0xFFD97706),
+          progress: Color(0xFFD97706),
+        );
       case StockStatus.critical:
-        bgColor = const Color(0xFFFDE8E8); // Light red
-        textColor = const Color(0xFFE02424); // Red text
-        label = 'Critique';
-        icon = Icons.circle;
-        break;
+        return const _StatusStyle(
+          label: 'Critique',
+          background: Color(0xFFFCD8D8),
+          foreground: Color(0xFFD32F2F),
+          progress: Color(0xFFD32F2F),
+        );
     }
+  }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 8, color: textColor),
-            const SizedBox(width: 6),
-          ],
-          Text(
-            label,
-            style: TextStyle(
-              color: textColor,
-              fontWeight: FontWeight.w700,
-              fontSize: 13,
-            ),
-          ),
-        ],
+  static String _formatQuantity(double value) {
+    if (value == value.roundToDouble()) {
+      return value.round().toString();
+    }
+    return value.toStringAsFixed(1);
+  }
+
+  static String _formatTime(DateTime time) {
+    final hour = time.hour.toString().padLeft(2, '0');
+    final minute = time.minute.toString().padLeft(2, '0');
+    return 'aujourd\'hui $hour:$minute';
+  }
+}
+
+class _ActionButton extends StatelessWidget {
+  const _ActionButton({
+    super.key,
+    required this.icon,
+    required this.onTap,
+    required this.activeColor,
+    required this.iconColor,
+  });
+
+  final IconData icon;
+  final VoidCallback? onTap;
+  final Color activeColor;
+  final Color iconColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final isEnabled = onTap != null;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: isEnabled ? activeColor : const Color(0xFFF0F1F5),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Icon(
+          icon,
+          size: 24,
+          color: isEnabled ? iconColor : const Color(0xFFAAB2C0),
+        ),
       ),
     );
   }
+}
 
-  String _formatTime(DateTime time) {
-    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
-  }
+class _StatusStyle {
+  const _StatusStyle({
+    required this.label,
+    required this.background,
+    required this.foreground,
+    required this.progress,
+  });
 
-  String _getRelativeTime(DateTime time) {
-    final now = DateTime.now();
-    final difference = now.difference(time);
-    
-    // Simplistic relative time for dummy data
-    if (difference.inMinutes < 60) {
-      // Because we use hardcoded values in UI spec: "il y a 30 min", we just return the string format
-      return '${difference.inMinutes == 0 ? 30 : difference.inMinutes} min'; 
-    } else {
-      return '${difference.inHours} h';
-    }
-  }
+  final String label;
+  final Color background;
+  final Color foreground;
+  final Color progress;
 }

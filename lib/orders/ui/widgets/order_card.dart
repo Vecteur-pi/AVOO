@@ -16,6 +16,7 @@ class OrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tableLabel = _formatTableLabel(order.tableNumber);
     final now = DateTime.now();
     final timeAgo = now.difference(order.updatedAt);
     String timeAgoString;
@@ -29,16 +30,16 @@ class OrderCard extends StatelessWidget {
     // final now = DateTime.now(); // Already defined above
     final elapsedMinutes = now.difference(order.createdAt).inMinutes;
     final delay = elapsedMinutes - order.expectedPreparationTimeMinutes;
-    
+
     // Only show if there is a delay or just show plain elapsed if no delay?
     // Requirement: "to highlight how much time has passed / delay relative to expectations"
     // Example: "+12 min". This usually implies 12 min OVER expectation.
-    // If delay is negative (early), maybe hide or show different? 
+    // If delay is negative (early), maybe hide or show different?
     // Let's assume positive delay is what we want to highlight with Red/Orange.
-    
+
     String delayText;
     Color delayBgColor;
-    
+
     if (delay > 0) {
       delayText = '+${delay} min';
       delayBgColor = const Color(0xFFEF4444); // Red for delay
@@ -101,7 +102,7 @@ class OrderCard extends StatelessWidget {
                 Row(
                   children: [
                     Text(
-                      'TABLE ${order.tableNumber}',
+                      tableLabel,
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -111,7 +112,9 @@ class OrderCard extends StatelessWidget {
                     const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.3),
                         borderRadius: BorderRadius.circular(4),
@@ -128,8 +131,10 @@ class OrderCard extends StatelessWidget {
                   ],
                 ),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: delayBgColor,
                     borderRadius: BorderRadius.circular(6),
@@ -159,7 +164,9 @@ class OrderCard extends StatelessWidget {
                   children: order.items.map((item) {
                     return Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFFF3F4F6),
                         borderRadius: BorderRadius.circular(20),
@@ -179,8 +186,11 @@ class OrderCard extends StatelessWidget {
                 // Timestamp
                 Row(
                   children: [
-                    const Icon(Icons.access_time,
-                        size: 16, color: Color(0xFF9CA3AF)),
+                    const Icon(
+                      Icons.access_time,
+                      size: 16,
+                      color: Color(0xFF9CA3AF),
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       'Actualisé aujourd\'hui ${DateFormat('HH:mm').format(order.updatedAt)} | $timeAgoString',
@@ -243,5 +253,18 @@ class OrderCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _formatTableLabel(String rawTableNumber) {
+    final value = rawTableNumber.trim();
+    if (value.isEmpty) {
+      return 'TABLE ?';
+    }
+
+    if (value.toLowerCase().startsWith('table')) {
+      return value.toUpperCase();
+    }
+
+    return 'TABLE ${value.toUpperCase()}';
   }
 }

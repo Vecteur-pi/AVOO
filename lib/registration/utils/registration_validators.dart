@@ -6,7 +6,7 @@ class RegistrationValidators {
 
   static String? fullName(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Veuillez saisir votre nom et prénom.';
+      return 'Le nom et prénom sont obligatoires.';
     }
     if (value.trim().split(' ').length < 2) {
       return 'Veuillez saisir nom et prénom.';
@@ -28,7 +28,7 @@ class RegistrationValidators {
 
   static String? phone(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Veuillez saisir votre numéro de téléphone.';
+      return 'Le numéro de téléphone est obligatoire.';
     }
     final normalized = normalizePhone(value);
     if (!_phoneRegExp.hasMatch(normalized)) {
@@ -49,7 +49,7 @@ class RegistrationValidators {
 
   static String? countryCity(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Veuillez saisir le pays et la ville.';
+      return 'Le pays / ville est obligatoire.';
     }
     return null;
   }

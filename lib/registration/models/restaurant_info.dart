@@ -6,6 +6,7 @@ class RestaurantInfo {
     this.tablesCount,
     required this.configureTablesLater,
     this.logoUrl,
+    this.logoPendingUpload = false,
     this.schedule,
   });
 
@@ -15,15 +16,17 @@ class RestaurantInfo {
   final int? tablesCount;
   final bool configureTablesLater;
   final String? logoUrl;
+  final bool logoPendingUpload;
   final String? schedule;
 
   Map<String, dynamic> toJson() => {
-        'name': name,
-        'address': address,
-        'phone': phone,
-        'tablesCount': tablesCount,
-        'configureTablesLater': configureTablesLater,
-        'logoUrl': logoUrl,
-        'schedule': schedule,
-      };
+    'name': name,
+    'address': address,
+    'phone': phone,
+    'tablesCount': tablesCount,
+    'configureTablesLater': configureTablesLater,
+    'logoUrl': logoUrl,
+    'logoPendingUpload': logoPendingUpload,
+    'schedule': schedule,
+  };
 }

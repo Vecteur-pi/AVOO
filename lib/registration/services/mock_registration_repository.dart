@@ -34,16 +34,28 @@ class MockRegistrationRepository implements RegistrationRepository {
   }
 
   @override
-  Future<void> submitRegistration(RegistrationPayload payload) async {
+  Future<RegistrationSubmitResult> submitRegistration(
+    RegistrationPayload payload,
+  ) async {
     await Future.delayed(const Duration(seconds: 1));
     final email = payload.owner.email.toLowerCase();
     final phone = payload.owner.phone;
     if (email.contains('used')) {
-      throw RegistrationException('email_exists', 'Cet e-mail est déjà utilisé.');
+      throw RegistrationException(
+        'email_exists',
+        'Cet e-mail est déjà utilisé.',
+      );
     }
     if (phone.endsWith('0000')) {
-      throw RegistrationException('phone_exists', 'Ce numéro est déjà utilisé.');
+      throw RegistrationException(
+        'phone_exists',
+        'Ce numéro est déjà utilisé.',
+      );
     }
+    return RegistrationSubmitResult(
+      uid: 'mock_uid_${DateTime.now().millisecondsSinceEpoch}',
+      restaurantId: 'mock_restaurant_${DateTime.now().millisecondsSinceEpoch}',
+    );
   }
 
   @override

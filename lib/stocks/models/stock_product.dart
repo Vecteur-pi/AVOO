@@ -5,11 +5,7 @@ class StockCategory {
   const StockCategory({required this.id, required this.name});
 }
 
-enum StockStatus {
-  normal,
-  low,
-  critical,
-}
+enum StockStatus { normal, low, critical }
 
 class StockProduct {
   final String id;
@@ -18,11 +14,20 @@ class StockProduct {
   final double quantityRemaining;
   final String unit;
   final StockStatus status;
-  
-  // Usage indicator
+  final bool isArchived;
+  final double minStock;
+
   final double? usageToday;
   final String? usageUnit;
-  
+
+  // Edit details
+  final String description;
+  final double? purchasePrice;
+  final String supplier;
+  final String location;
+  final bool perishable;
+  final DateTime? expiresAt;
+
   // Timestamp
   final DateTime lastUpdated;
 
@@ -33,8 +38,18 @@ class StockProduct {
     required this.quantityRemaining,
     required this.unit,
     required this.status,
+    required this.isArchived,
+    required this.minStock,
     this.usageToday,
     this.usageUnit,
+    this.description = '',
+    this.purchasePrice,
+    this.supplier = '',
+    this.location = '',
+    this.perishable = false,
+    this.expiresAt,
     required this.lastUpdated,
   });
+
+  double get displayedQuantity => quantityRemaining;
 }

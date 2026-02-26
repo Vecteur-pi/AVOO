@@ -31,39 +31,53 @@ service cloud.firestore {
       return get(memberPath(restaurantId)).data.role;
     }
 
+    // Fallback: check admin status via global users/{uid} doc
+    // Needed when owner's member doc is at an auto-generated ID instead of their UID
+    function isAdminByUserDoc(restaurantId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.active == true
+        && (
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.restaurant_id == restaurantId
+          || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.restaurantId == restaurantId
+        )
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in [
+          "owner", "admin", "manager", "owner_manager",
+          "gerant", "gérant", "proprietaire", "propriétaire"
+        ];
+    }
+
     function isOwner(restaurantId) {
-      return isActiveMember(restaurantId)
+      return (
+        isActiveMember(restaurantId)
         && (memberRole(restaurantId) in [
-          "owner",
-          "admin",
-          "manager",
-          "owner_manager",
-          "gerant",
-          "gérant",
-          "proprietaire",
-          "propriétaire"
-        ]);
+          "owner", "admin", "manager", "owner_manager",
+          "gerant", "gérant", "proprietaire", "propriétaire"
+        ])
+      ) || isAdminByUserDoc(restaurantId);
     }
 
     function isStaffAdmin(restaurantId) {
-      return isActiveMember(restaurantId)
-        && (
-          memberRole(restaurantId) in [
-            "owner",
-            "admin",
-            "manager",
-            "owner_manager",
-            "gerant",
-            "gérant",
-            "proprietaire",
-            "propriétaire"
-          ]
-        );
+      return (
+        isActiveMember(restaurantId)
+        && (memberRole(restaurantId) in [
+          "owner", "admin", "manager", "owner_manager",
+          "gerant", "gérant", "proprietaire", "propriétaire"
+        ])
+      ) || isAdminByUserDoc(restaurantId);
     }
 
     function isStaff(restaurantId) {
       return isActiveMember(restaurantId)
         && (memberRole(restaurantId) in ["owner", "waiter", "serveur", "server", "service"]);
+    }
+
+    function normalizedRole(role) {
+      return role is string ? role.lower() : "";
+    }
+
+    function isLockedOwnerRole(role) {
+      return normalizedRole(role) in ["owner", "owner_manager", "owner-manager", "proprietaire", "propriétaire"];
     }
 
     // Bootstrap create from registration flow
@@ -125,7 +139,13 @@ service cloud.firestore {
     // ---- Top-level user mapping ----
     match /users/{uid} {
       allow read: if isSelf(uid)
-        || (signedIn() && isOwner(resource.data.restaurant_id));
+        || (
+          signedIn()
+          && (
+            isOwner(resource.data.restaurant_id)
+            || isOwner(resource.data.restaurantId)
+          )
+        );
 
       allow create: if isSelf(uid)
         && request.resource.data.uid == uid
@@ -144,9 +164,20 @@ service cloud.firestore {
         );
 
       allow update: if isSelf(uid)
-        || isOwner(resource.data.restaurant_id);
+        || (
+          (
+            isOwner(resource.data.restaurant_id)
+            || isOwner(resource.data.restaurantId)
+          )
+          && !isLockedOwnerRole(resource.data.role)
+          && !isLockedOwnerRole(request.resource.data.role)
+        );
 
-      allow delete: if isOwner(resource.data.restaurant_id);
+      allow delete: if (
+        isOwner(resource.data.restaurant_id)
+        || isOwner(resource.data.restaurantId)
+      )
+        && !isLockedOwnerRole(resource.data.role);
     }
 
     // ---- Restaurants ----
@@ -167,7 +198,10 @@ service cloud.firestore {
       match /members/{uid} {
         allow read: if isActiveMember(restaurantId);
 
-          allow create: if isStaffAdmin(restaurantId)
+          allow create: if (
+              isStaffAdmin(restaurantId)
+              && !isLockedOwnerRole(request.resource.data.role)
+            )
             || isOwnerSeedMember(restaurantId, uid)
             || (
               signedIn()
@@ -194,7 +228,11 @@ service cloud.firestore {
               )
             );
           // Allow joining members to overwrite the stub document with their full data
-          allow update: if isStaffAdmin(restaurantId)
+          allow update: if (
+              isStaffAdmin(restaurantId)
+              && !isLockedOwnerRole(resource.data.role)
+              && !isLockedOwnerRole(request.resource.data.role)
+            )
             || (
               signedIn()
               && uid == request.auth.uid
@@ -218,7 +256,8 @@ service cloud.firestore {
                 )
               )
             );
-        allow delete: if isStaffAdmin(restaurantId);
+        allow delete: if isStaffAdmin(restaurantId)
+          && !isLockedOwnerRole(resource.data.role);
       }
 
       // Staff invitations (Spark-friendly manual email flow)
@@ -307,28 +346,36 @@ service cloud.firestore {
             )
           );
           
-        allow update: if signedIn()
-          && uid == request.auth.uid
-          && (
-            request.resource.data.restaurant_id == restaurantId
-            || request.resource.data.restaurantId == restaurantId
-          )
-          && request.resource.data.active == true
-          && emailMatchesCurrentUser(
-            request.resource.data.email,
-            request.resource.data.email_lower
-          )
-          && (
-            hasValidInvitationForSelf(
-              restaurantId,
-              request.resource.data.invitation_id
+        allow update: if (
+              isStaffAdmin(restaurantId)
+              && !isLockedOwnerRole(resource.data.role)
+              && !isLockedOwnerRole(request.resource.data.role)
             )
-            || hasValidInvitationForSelf(
-              restaurantId,
-              request.resource.data.invitationId
+          || (
+            signedIn()
+            && uid == request.auth.uid
+            && (
+              request.resource.data.restaurant_id == restaurantId
+              || request.resource.data.restaurantId == restaurantId
+            )
+            && request.resource.data.active == true
+            && emailMatchesCurrentUser(
+              request.resource.data.email,
+              request.resource.data.email_lower
+            )
+            && (
+              hasValidInvitationForSelf(
+                restaurantId,
+                request.resource.data.invitation_id
+              )
+              || hasValidInvitationForSelf(
+                restaurantId,
+                request.resource.data.invitationId
+              )
             )
           );
-        allow delete: if isOwner(restaurantId);
+        allow delete: if isOwner(restaurantId)
+          && !isLockedOwnerRole(resource.data.role);
       }
 
       // Menu
@@ -365,7 +412,7 @@ service cloud.firestore {
       // Inventory (Stocks)
       match /inventory/{itemId} {
         allow read: if isActiveMember(restaurantId);
-        allow create, update: if isStaff(restaurantId);
+        allow create, update: if isStaffAdmin(restaurantId);
         allow delete: if isOwner(restaurantId);
       }
     }
@@ -383,6 +430,28 @@ service cloud.firestore {
       
       // Allow delete if user is owner
       allow delete: if isOwner(resource.data.restaurantId);
+    }
+
+    // ---- SALES HOURLY (Dashboard chart) ----
+    match /salesHourly/{dayId} {
+      // If the doc is scoped by restaurant, enforce membership.
+      // If not scoped, allow authenticated users to read.
+      allow read: if signedIn()
+        && (
+          resource == null
+          ||
+          (resource.data.restaurantId is string
+            && isActiveMember(resource.data.restaurantId))
+          || (resource.data.restaurant_id is string
+            && isActiveMember(resource.data.restaurant_id))
+          || (
+            !(resource.data.restaurantId is string)
+            && !(resource.data.restaurant_id is string)
+          )
+        );
+
+      // Writes should stay server-side/admin controlled.
+      allow create, update, delete: if false;
     }
   }
 }

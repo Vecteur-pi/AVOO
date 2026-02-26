@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 class PlateBounceLoader extends StatefulWidget {
   const PlateBounceLoader({
     super.key,
-    this.size = 96.0,
+    this.size = 140.0,
   });
 
   /// The size of the loader image.
@@ -72,7 +72,7 @@ class _PlateBounceLoaderState extends State<PlateBounceLoader>
         );
       },
       child: Image.asset(
-        'assets/images/Loading_plate.png',
+        'assets/images/Loading.png',
         width: widget.size,
         height: widget.size,
         fit: BoxFit.contain,

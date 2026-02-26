@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../models/incident_model.dart';
 import '../repository/incident_repository.dart';
+import '../../sync/offline_sync_controller.dart';
 
 class IncidentsScreen extends StatefulWidget {
   const IncidentsScreen({super.key, required this.restaurantId});
@@ -32,8 +34,12 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
   }
 
   Future<void> _validate(IncidentModel incident) async {
+    final syncController = context.read<OfflineSyncController>();
     setState(() => _actioningId = incident.id);
     try {
+      if (!syncController.isOnline) {
+        syncController.noteFirestoreWriteQueued();
+      }
       await _repository.validate(widget.restaurantId, incident.id);
     } catch (_) {
       if (mounted) {
@@ -47,8 +53,12 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
   }
 
   Future<void> _ignore(IncidentModel incident) async {
+    final syncController = context.read<OfflineSyncController>();
     setState(() => _actioningId = incident.id);
     try {
+      if (!syncController.isOnline) {
+        syncController.noteFirestoreWriteQueued();
+      }
       await _repository.ignore(widget.restaurantId, incident.id);
     } catch (_) {
       if (mounted) {
@@ -100,16 +110,19 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                   child: Text(
                     'Incidents',
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          color: IncidentsScreen._dark,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 32,
-                          letterSpacing: -0.5,
-                        ),
+                      color: IncidentsScreen._dark,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 32,
+                      letterSpacing: -0.5,
+                    ),
                   ),
                 ),
                 // Date filter chip
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: IncidentsScreen._surface,
                     borderRadius: BorderRadius.circular(12),
@@ -128,13 +141,16 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                       Text(
                         "Aujourd'hui",
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF374151),
-                            ),
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF374151),
+                        ),
                       ),
                       const SizedBox(width: 6),
-                      const Icon(Icons.keyboard_arrow_down_rounded,
-                          size: 18, color: Color(0xFF6B7280)),
+                      const Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        size: 18,
+                        color: Color(0xFF6B7280),
+                      ),
                     ],
                   ),
                 ),
@@ -159,7 +175,8 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
               ),
               child: TextField(
                 controller: _searchController,
-                onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
+                onChanged: (v) =>
+                    setState(() => _searchQuery = v.toLowerCase()),
                 style: const TextStyle(
                   color: Color(0xFF374151),
                   fontWeight: FontWeight.w500,
@@ -167,8 +184,15 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                 ),
                 decoration: InputDecoration(
                   hintText: 'Rechercher un incident...',
-                  hintStyle: TextStyle(color: IncidentsScreen._muted, fontSize: 15),
-                  prefixIcon: Icon(Icons.search, color: IncidentsScreen._muted, size: 22),
+                  hintStyle: TextStyle(
+                    color: IncidentsScreen._muted,
+                    fontSize: 15,
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search,
+                    color: IncidentsScreen._muted,
+                    size: 22,
+                  ),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(vertical: 14),
                 ),
@@ -193,7 +217,11 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.error_outline, color: IncidentsScreen._muted, size: 48),
+                        Icon(
+                          Icons.error_outline,
+                          color: IncidentsScreen._muted,
+                          size: 48,
+                        ),
                         const SizedBox(height: 12),
                         Text(
                           'Erreur de chargement',
@@ -212,18 +240,28 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                 // Apply search filter
                 if (_searchQuery.isNotEmpty) {
                   incidents = incidents
-                      .where((i) =>
-                          i.title.toLowerCase().contains(_searchQuery) ||
-                          i.description.toLowerCase().contains(_searchQuery) ||
-                          i.tableLabel.toLowerCase().contains(_searchQuery) ||
-                          i.incidentNumber.toLowerCase().contains(_searchQuery))
+                      .where(
+                        (i) =>
+                            i.title.toLowerCase().contains(_searchQuery) ||
+                            i.description.toLowerCase().contains(
+                              _searchQuery,
+                            ) ||
+                            i.tableLabel.toLowerCase().contains(_searchQuery) ||
+                            i.incidentNumber.toLowerCase().contains(
+                              _searchQuery,
+                            ),
+                      )
                       .toList();
                 }
 
                 // Sort: pending first, then by createdAt desc
                 incidents.sort((a, b) {
-                  if (a.status == IncidentStatus.pending && b.status != IncidentStatus.pending) return -1;
-                  if (b.status == IncidentStatus.pending && a.status != IncidentStatus.pending) return 1;
+                  if (a.status == IncidentStatus.pending &&
+                      b.status != IncidentStatus.pending)
+                    return -1;
+                  if (b.status == IncidentStatus.pending &&
+                      a.status != IncidentStatus.pending)
+                    return 1;
                   return b.createdAt.compareTo(a.createdAt);
                 });
 
@@ -266,8 +304,11 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
               borderRadius: BorderRadius.circular(24),
             ),
             alignment: Alignment.center,
-            child: const Icon(Icons.check_circle_outline_rounded,
-                color: Color(0xFF739760), size: 44),
+            child: const Icon(
+              Icons.check_circle_outline_rounded,
+              color: Color(0xFF739760),
+              size: 44,
+            ),
           ),
           const SizedBox(height: 20),
           const Text(
@@ -375,7 +416,10 @@ class _IncidentCard extends StatelessWidget {
                 if (!isPending)
                   Container(
                     margin: const EdgeInsets.only(right: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: isValidated
                           ? const Color(0xFFD1FAE5)
@@ -393,8 +437,11 @@ class _IncidentCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                Icon(Icons.more_horiz_rounded,
-                    color: const Color(0xFF9CA3AF), size: 22),
+                Icon(
+                  Icons.more_horiz_rounded,
+                  color: const Color(0xFF9CA3AF),
+                  size: 22,
+                ),
               ],
             ),
             const SizedBox(height: 8),
@@ -486,8 +533,11 @@ class _IncidentCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.timer_outlined,
-                            size: 14, color: Color(0xFF9CA3AF)),
+                        const Icon(
+                          Icons.timer_outlined,
+                          size: 14,
+                          color: Color(0xFF9CA3AF),
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           elapsedText,
@@ -531,8 +581,11 @@ class _IncidentCard extends StatelessWidget {
                                 color: Color(0xFF6B7280),
                               ),
                             )
-                          : const Icon(Icons.cancel_outlined,
-                              size: 18, color: Color(0xFF4B5563)),
+                          : const Icon(
+                              Icons.cancel_outlined,
+                              size: 18,
+                              color: Color(0xFF4B5563),
+                            ),
                       label: const Text(
                         'Ignorer',
                         style: TextStyle(
@@ -543,7 +596,10 @@ class _IncidentCard extends StatelessWidget {
                       ),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 13),
-                        side: const BorderSide(color: Color(0xFFD1D5DB), width: 1.5),
+                        side: const BorderSide(
+                          color: Color(0xFFD1D5DB),
+                          width: 1.5,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),
@@ -565,8 +621,11 @@ class _IncidentCard extends StatelessWidget {
                                 color: Colors.white,
                               ),
                             )
-                          : const Icon(Icons.check_circle_outline_rounded,
-                              size: 18, color: Colors.white),
+                          : const Icon(
+                              Icons.check_circle_outline_rounded,
+                              size: 18,
+                              color: Colors.white,
+                            ),
                       label: const Text(
                         'Valider',
                         style: TextStyle(

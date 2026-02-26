@@ -81,7 +81,9 @@ class SupabaseRegistrationRepository implements RegistrationRepository {
   }
 
   @override
-  Future<void> submitRegistration(RegistrationPayload payload) async {
+  Future<RegistrationSubmitResult> submitRegistration(
+    RegistrationPayload payload,
+  ) async {
     RegistrationDebugState.clear();
 
     final owner = payload.owner;
@@ -170,6 +172,8 @@ class SupabaseRegistrationRepository implements RegistrationRepository {
       'configureTablesLater': restaurant.configureTablesLater,
       'logo_url': restaurant.logoUrl,
       'logoUrl': restaurant.logoUrl,
+      'logo_pending_upload': restaurant.logoPendingUpload,
+      'logoPendingUpload': restaurant.logoPendingUpload,
       'schedule': restaurant.schedule,
       'owner_uid': uid,
       'ownerUid': uid,
@@ -243,6 +247,8 @@ class SupabaseRegistrationRepository implements RegistrationRepository {
     } catch (_) {
       // Non-blocking: account and profile are already created.
     }
+
+    return RegistrationSubmitResult(uid: uid, restaurantId: restaurantId);
   }
 
   @override
