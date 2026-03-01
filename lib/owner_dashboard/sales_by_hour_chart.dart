@@ -12,11 +12,13 @@ class SalesByHourChart extends StatefulWidget {
     this.service,
     this.nowProvider,
     this.fallbackHourlySales,
+    this.date,
   });
 
   final FirestoreSalesService? service;
   final DateTime Function()? nowProvider;
   final List<double>? fallbackHourlySales;
+  final DateTime? date;
 
   @override
   State<SalesByHourChart> createState() => _SalesByHourChartState();
@@ -42,7 +44,8 @@ class _SalesByHourChartState extends State<SalesByHourChart> {
   void didUpdateWidget(covariant SalesByHourChart oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.service != widget.service ||
-        oldWidget.nowProvider != widget.nowProvider) {
+        oldWidget.nowProvider != widget.nowProvider ||
+        oldWidget.date != widget.date) {
       _service = widget.service ?? FirestoreSalesService();
       _stream = _buildStream();
       _lastTrackballIndex = null;
@@ -50,6 +53,9 @@ class _SalesByHourChartState extends State<SalesByHourChart> {
   }
 
   Stream<SalesByHourSnapshot> _buildStream() {
+    if (widget.date != null) {
+      return _service.watchSalesForDate(widget.date!);
+    }
     return _service.watchTodaySales(nowProvider: widget.nowProvider);
   }
 

@@ -22,6 +22,33 @@ bool _isManagerRole(String role) {
       normalized == 'gérant';
 }
 
+String _dashboardFilterLabel(DashboardTimeFilter filter) {
+  switch (filter) {
+    case DashboardTimeFilter.today:
+      return "Aujourd'hui";
+    case DashboardTimeFilter.yesterday:
+      return 'Hier';
+    case DashboardTimeFilter.last7Days:
+      return '7 jours';
+    case DashboardTimeFilter.allTime:
+      return 'Tout';
+  }
+}
+
+DateTime? _chartDateFromFilter(DashboardTimeFilter filter) {
+  final now = DateTime.now();
+  final todayStart = DateTime(now.year, now.month, now.day);
+  switch (filter) {
+    case DashboardTimeFilter.today:
+      return todayStart;
+    case DashboardTimeFilter.yesterday:
+      return todayStart.subtract(const Duration(days: 1));
+    case DashboardTimeFilter.last7Days:
+    case DashboardTimeFilter.allTime:
+      return null;
+  }
+}
+
 class OwnerDashboardScreen extends StatefulWidget {
   const OwnerDashboardScreen({super.key, required this.profile});
 
@@ -36,22 +63,35 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
   int _selectedIndex = 0;
   final Set<int> _visitedTabs = <int>{0};
   late Stream<OwnerDashboardData> _dashboardStream;
+  DashboardTimeFilter _selectedFilter = DashboardTimeFilter.today;
+
+  void _refreshDashboardStream() {
+    _dashboardStream = _repository
+        .watch(widget.profile.restaurantId, filter: _selectedFilter)
+        .asBroadcastStream();
+  }
+
+  void _onFilterSelected(DashboardTimeFilter filter) {
+    if (filter == _selectedFilter) {
+      return;
+    }
+    setState(() {
+      _selectedFilter = filter;
+      _refreshDashboardStream();
+    });
+  }
 
   @override
   void initState() {
     super.initState();
-    _dashboardStream = _repository
-        .watch(widget.profile.restaurantId)
-        .asBroadcastStream();
+    _refreshDashboardStream();
   }
 
   @override
   void didUpdateWidget(covariant OwnerDashboardScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.profile.restaurantId != widget.profile.restaurantId) {
-      _dashboardStream = _repository
-          .watch(widget.profile.restaurantId)
-          .asBroadcastStream();
+      _refreshDashboardStream();
     }
   }
 
@@ -72,7 +112,11 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _DashboardTitleRow(uiScale: uiScale),
+                  _DashboardTitleRow(
+                    uiScale: uiScale,
+                    selectedFilter: _selectedFilter,
+                    onFilterSelected: _onFilterSelected,
+                  ),
                   SizedBox(height: s(24)),
                   StreamBuilder<OwnerDashboardData>(
                     stream: _dashboardStream,
@@ -82,6 +126,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                         data: data,
                         uiScale: uiScale,
                         restaurantId: profile.restaurantId,
+                        selectedFilter: _selectedFilter,
                       );
                     },
                   ),
@@ -484,9 +529,15 @@ class _TopAppBar extends StatelessWidget {
 }
 
 class _DashboardTitleRow extends StatelessWidget {
-  const _DashboardTitleRow({required this.uiScale});
+  const _DashboardTitleRow({
+    required this.uiScale,
+    required this.selectedFilter,
+    required this.onFilterSelected,
+  });
 
   final double uiScale;
+  final DashboardTimeFilter selectedFilter;
+  final ValueChanged<DashboardTimeFilter> onFilterSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -506,38 +557,60 @@ class _DashboardTitleRow extends StatelessWidget {
             fontFamily: 'Serif',
           ),
         ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFE5E7EB)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 2,
-                offset: const Offset(0, 1),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                "Aujourd'hui",
-                style: textTheme.bodyMedium?.copyWith(
-                  color: const Color(0xFF374151),
-                  fontWeight: FontWeight.w600,
-                  fontSize: 15,
+        PopupMenuButton<DashboardTimeFilter>(
+          padding: EdgeInsets.zero,
+          onSelected: onFilterSelected,
+          itemBuilder: (context) => const [
+            PopupMenuItem(
+              value: DashboardTimeFilter.today,
+              child: Text("Aujourd'hui"),
+            ),
+            PopupMenuItem(
+              value: DashboardTimeFilter.yesterday,
+              child: Text('Hier'),
+            ),
+            PopupMenuItem(
+              value: DashboardTimeFilter.last7Days,
+              child: Text('7 jours'),
+            ),
+            PopupMenuItem(
+              value: DashboardTimeFilter.allTime,
+              child: Text('Tout'),
+            ),
+          ],
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE5E7EB)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 2,
+                  offset: const Offset(0, 1),
                 ),
-              ),
-              const SizedBox(width: 8),
-              const Icon(
-                Icons.keyboard_arrow_down_rounded,
-                size: 20,
-                color: Color(0xFF6B7280),
-              ),
-            ],
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _dashboardFilterLabel(selectedFilter),
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: const Color(0xFF374151),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  size: 20,
+                  color: Color(0xFF6B7280),
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -550,19 +623,25 @@ class _DashboardContent extends StatelessWidget {
     required this.data,
     required this.uiScale,
     required this.restaurantId,
+    required this.selectedFilter,
   });
 
   final OwnerDashboardData data;
   final double uiScale;
   final String restaurantId;
+  final DashboardTimeFilter selectedFilter;
 
   @override
   Widget build(BuildContext context) {
     double s(double value) => value * uiScale;
     final textTheme = Theme.of(context).textTheme;
-    final salesDelta = data.salesChangePercent;
-    final isPositiveDelta = salesDelta >= 0;
-    final deltaColor = isPositiveDelta ? AvooColors.success : AvooColors.error;
+    final chartDate = _chartDateFromFilter(selectedFilter);
+    final salesCardTitle = switch (selectedFilter) {
+      DashboardTimeFilter.today => 'VENTES DU JOUR',
+      DashboardTimeFilter.yesterday => "VENTES D'HIER",
+      DashboardTimeFilter.last7Days => 'VENTES (7 JOURS)',
+      DashboardTimeFilter.allTime => 'VENTES (TOUT)',
+    };
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -577,7 +656,7 @@ class _DashboardContent extends StatelessWidget {
                 SizedBox(
                   width: cardWidth,
                   child: _SummaryCard(
-                    title: 'VENTES DU JOUR',
+                    title: salesCardTitle,
                     headerColor: AvooColors.green,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -752,7 +831,10 @@ class _DashboardContent extends StatelessWidget {
               SizedBox(height: s(24)),
               SizedBox(
                 height: 240,
-                child: SalesByHourChart(fallbackHourlySales: data.hourlySales),
+                child: SalesByHourChart(
+                  fallbackHourlySales: data.hourlySales,
+                  date: chartDate,
+                ),
               ),
             ],
           ),

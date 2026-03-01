@@ -21,6 +21,36 @@ service cloud.firestore {
       return /databases/$(database)/documents/restaurants/$(restaurantId)/members/$(request.auth.uid);
     }
 
+    function userDocPath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+
+    function linkedByUserDoc(restaurantId) {
+      return signedIn()
+        && exists(userDocPath())
+        && (
+          get(userDocPath()).data.restaurant_id == restaurantId
+          || get(userDocPath()).data.restaurantId == restaurantId
+        )
+        && (
+          !(get(userDocPath()).data.active is bool)
+          || get(userDocPath()).data.active == true
+        );
+    }
+
+    function isAdminRole(role) {
+      return normalizedRole(role) in [
+        "owner", "admin", "manager", "owner_manager", "owner-manager",
+        "gerant", "gérant", "proprietaire", "propriétaire"
+      ];
+    }
+
+    function orderRestaurantId(data) {
+      return data.restaurantId is string ? data.restaurantId
+        : (data.restaurant_id is string ? data.restaurant_id
+        : (data.restaurant is string ? data.restaurant : ""));
+    }
+
     function isActiveMember(restaurantId) {
       return signedIn()
         && exists(memberPath(restaurantId))
@@ -34,36 +64,21 @@ service cloud.firestore {
     // Fallback: check admin status via global users/{uid} doc
     // Needed when owner's member doc is at an auto-generated ID instead of their UID
     function isAdminByUserDoc(restaurantId) {
-      return signedIn()
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.active == true
-        && (
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.restaurant_id == restaurantId
-          || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.restaurantId == restaurantId
-        )
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in [
-          "owner", "admin", "manager", "owner_manager",
-          "gerant", "gérant", "proprietaire", "propriétaire"
-        ];
+      return linkedByUserDoc(restaurantId)
+        && isAdminRole(get(userDocPath()).data.role);
     }
 
     function isOwner(restaurantId) {
       return (
         isActiveMember(restaurantId)
-        && (memberRole(restaurantId) in [
-          "owner", "admin", "manager", "owner_manager",
-          "gerant", "gérant", "proprietaire", "propriétaire"
-        ])
+        && isAdminRole(memberRole(restaurantId))
       ) || isAdminByUserDoc(restaurantId);
     }
 
     function isStaffAdmin(restaurantId) {
       return (
         isActiveMember(restaurantId)
-        && (memberRole(restaurantId) in [
-          "owner", "admin", "manager", "owner_manager",
-          "gerant", "gérant", "proprietaire", "propriétaire"
-        ])
+        && isAdminRole(memberRole(restaurantId))
       ) || isAdminByUserDoc(restaurantId);
     }
 
@@ -298,7 +313,9 @@ service cloud.firestore {
 
       // Tables
       match /tables/{tableId} {
-        allow read: if isActiveMember(restaurantId);
+        allow read: if isActiveMember(restaurantId)
+          || isOwner(restaurantId)
+          || linkedByUserDoc(restaurantId);
         allow create, delete: if isOwner(restaurantId);
 
         allow update: if isOwner(restaurantId)
@@ -420,16 +437,23 @@ service cloud.firestore {
     // ---- ORDERS (New) ----
     match /orders/{orderId} {
       // Allow read if user is a member of the restaurant
-      allow read: if isActiveMember(resource.data.restaurantId);
+      allow read: if isActiveMember(orderRestaurantId(resource.data))
+        || isOwner(orderRestaurantId(resource.data))
+        || linkedByUserDoc(orderRestaurantId(resource.data));
       
       // Allow create if user is a member of the restaurant (e.g. staff creating order)
-      allow create: if isActiveMember(request.resource.data.restaurantId);
+      allow create: if isActiveMember(orderRestaurantId(request.resource.data))
+        || isOwner(orderRestaurantId(request.resource.data))
+        || linkedByUserDoc(orderRestaurantId(request.resource.data));
       
       // Allow update if user is a member (e.g. changing status)
-      allow update: if isActiveMember(resource.data.restaurantId);
+      allow update: if isActiveMember(orderRestaurantId(resource.data))
+        || isOwner(orderRestaurantId(resource.data))
+        || linkedByUserDoc(orderRestaurantId(resource.data));
       
       // Allow delete if user is owner
-      allow delete: if isOwner(resource.data.restaurantId);
+      allow delete: if isOwner(orderRestaurantId(resource.data))
+        || linkedByUserDoc(orderRestaurantId(resource.data));
     }
 
     // ---- SALES HOURLY (Dashboard chart) ----

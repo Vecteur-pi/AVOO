@@ -4,6 +4,9 @@ enum OrderStatus {
   enCours,
   enPreparation,
   pret,
+  servie,
+  payee,
+  fermee,
   ingore, // For ignored orders
 }
 
@@ -33,6 +36,7 @@ class OrderModel {
   final OrderStatus status;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final double totalAmount;
   final int expectedPreparationTimeMinutes; // For "+12 min" calculation
 
   OrderModel({
@@ -43,6 +47,7 @@ class OrderModel {
     required this.status,
     required this.createdAt,
     required this.updatedAt,
+    required this.totalAmount,
     this.expectedPreparationTimeMinutes = 20, // Default expectation
   });
 
@@ -60,6 +65,7 @@ class OrderModel {
       status: _parseStatus(data['status']?.toString()),
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      totalAmount: _readAmount(data),
       expectedPreparationTimeMinutes:
           data['expectedPreparationTimeMinutes'] ?? 20,
     );
@@ -73,6 +79,7 @@ class OrderModel {
       'status': status.name,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
+      'totalAmount': totalAmount,
       'expectedPreparationTimeMinutes': expectedPreparationTimeMinutes,
     };
   }
@@ -83,6 +90,22 @@ class OrderModel {
         return OrderStatus.enPreparation;
       case 'pret':
         return OrderStatus.pret;
+      case 'servie':
+      case 'servi':
+      case 'served':
+        return OrderStatus.servie;
+      case 'payee':
+      case 'paye':
+      case 'paid':
+      case 'settled':
+      case 'encaissee':
+      case 'encaisseee':
+        return OrderStatus.payee;
+      case 'fermee':
+      case 'ferme':
+      case 'closed':
+      case 'close':
+        return OrderStatus.fermee;
       case 'ingore':
         return OrderStatus.ingore;
       case 'enCours':
@@ -151,6 +174,36 @@ class OrderModel {
     return value;
   }
 
+  static double _readAmount(Map<String, dynamic> data) {
+    for (final key in const [
+      'totalAmount',
+      'total_amount',
+      'total',
+      'amount',
+      'paidAmount',
+      'paid_amount',
+      'grandTotal',
+      'grand_total',
+    ]) {
+      final raw = data[key];
+      if (raw is num) {
+        return raw.toDouble();
+      }
+      if (raw is String) {
+        final cleaned = raw
+            .replaceAll('\u00A0', '')
+            .replaceAll(' ', '')
+            .replaceAll(',', '.')
+            .replaceAll(RegExp(r'[^0-9.\-]'), '');
+        final parsed = double.tryParse(cleaned);
+        if (parsed != null) {
+          return parsed;
+        }
+      }
+    }
+    return 0;
+  }
+
   static dynamic _firstValue(Map<String, dynamic> data, List<String> keys) {
     for (final key in keys) {
       final value = data[key];
@@ -193,6 +246,7 @@ class OrderModel {
     OrderStatus? status,
     DateTime? createdAt,
     DateTime? updatedAt,
+    double? totalAmount,
     int? expectedPreparationTimeMinutes,
   }) {
     return OrderModel(
@@ -203,6 +257,7 @@ class OrderModel {
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      totalAmount: totalAmount ?? this.totalAmount,
       expectedPreparationTimeMinutes:
           expectedPreparationTimeMinutes ?? this.expectedPreparationTimeMinutes,
     );

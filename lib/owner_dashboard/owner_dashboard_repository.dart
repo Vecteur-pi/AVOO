@@ -72,16 +72,23 @@ class TopProductData {
   final double growthPercent;
 }
 
+enum DashboardTimeFilter { today, yesterday, last7Days, allTime }
+
 class OwnerDashboardRepository {
   OwnerDashboardRepository({FirebaseFirestore? firestore})
     : _firestore = firestore ?? FirebaseFirestore.instance;
 
   final FirebaseFirestore _firestore;
 
-  Stream<OwnerDashboardData> watch(String restaurantId) async* {
+  Stream<OwnerDashboardData> watch(
+    String restaurantId, {
+    DashboardTimeFilter filter = DashboardTimeFilter.today,
+    DateTime Function()? nowProvider,
+  }) async* {
+    final resolveNow = nowProvider ?? DateTime.now;
     while (true) {
       try {
-        yield await load(restaurantId);
+        yield await load(restaurantId, filter: filter, now: resolveNow());
       } catch (_) {
         yield OwnerDashboardData.empty();
       }
@@ -89,10 +96,28 @@ class OwnerDashboardRepository {
     }
   }
 
-  Future<OwnerDashboardData> load(String restaurantId) async {
-    final now = DateTime.now();
-    final todayStart = DateTime(now.year, now.month, now.day);
-    final yesterdayStart = todayStart.subtract(const Duration(days: 1));
+  Future<OwnerDashboardData> load(
+    String restaurantId, {
+    DashboardTimeFilter filter = DashboardTimeFilter.today,
+    DateTime? now,
+  }) async {
+    final referenceNow = now ?? DateTime.now();
+    final todayStart = DateTime(
+      referenceNow.year,
+      referenceNow.month,
+      referenceNow.day,
+    );
+    final tomorrowStart = todayStart.add(const Duration(days: 1));
+    final currentRange = _currentRangeForFilter(
+      filter: filter,
+      todayStart: todayStart,
+      tomorrowStart: tomorrowStart,
+    );
+    final previousRange = _previousRangeForFilter(
+      filter: filter,
+      currentRange: currentRange,
+      todayStart: todayStart,
+    );
 
     final docs = await Future.wait<List<_FirestoreRecord>>([
       _loadOrderLikeDocs(restaurantId),
@@ -116,7 +141,7 @@ class OwnerDashboardRepository {
     final yesterdayProducts = <String, _ProductAccumulator>{};
 
     for (final order in orderEntries) {
-      if (_isWithinRange(order.createdAt, todayStart, now)) {
+      if (_isInDateRange(order.createdAt, currentRange)) {
         dailySales += order.amount;
         dailyTickets += 1;
         final hour = order.createdAt.hour;
@@ -124,7 +149,12 @@ class OwnerDashboardRepository {
           hourlySales[hour - hours.first] += order.amount;
         }
         _accumulateProducts(todayProducts, order.items);
-      } else if (_isWithinRange(order.createdAt, yesterdayStart, todayStart)) {
+      }
+      if (_isInDateRange(
+        order.createdAt,
+        previousRange,
+        includeAllIfNull: false,
+      )) {
         yesterdaySales += order.amount;
         _accumulateProducts(yesterdayProducts, order.items);
       }
@@ -159,6 +189,59 @@ class OwnerDashboardRepository {
       hourlySales: hourlySales,
       topProducts: topProducts,
     );
+  }
+
+  _DateRange? _currentRangeForFilter({
+    required DashboardTimeFilter filter,
+    required DateTime todayStart,
+    required DateTime tomorrowStart,
+  }) {
+    switch (filter) {
+      case DashboardTimeFilter.today:
+        return _DateRange(start: todayStart, endExclusive: tomorrowStart);
+      case DashboardTimeFilter.yesterday:
+        final yesterdayStart = todayStart.subtract(const Duration(days: 1));
+        return _DateRange(start: yesterdayStart, endExclusive: todayStart);
+      case DashboardTimeFilter.last7Days:
+        final start = tomorrowStart.subtract(const Duration(days: 7));
+        return _DateRange(start: start, endExclusive: tomorrowStart);
+      case DashboardTimeFilter.allTime:
+        return null;
+    }
+  }
+
+  _DateRange? _previousRangeForFilter({
+    required DashboardTimeFilter filter,
+    required _DateRange? currentRange,
+    required DateTime todayStart,
+  }) {
+    switch (filter) {
+      case DashboardTimeFilter.today:
+        final previousStart = todayStart.subtract(const Duration(days: 1));
+        return _DateRange(start: previousStart, endExclusive: todayStart);
+      case DashboardTimeFilter.yesterday:
+        final previousEnd = todayStart.subtract(const Duration(days: 1));
+        final previousStart = previousEnd.subtract(const Duration(days: 1));
+        return _DateRange(start: previousStart, endExclusive: previousEnd);
+      case DashboardTimeFilter.last7Days:
+        if (currentRange == null) return null;
+        final previousEnd = currentRange.start;
+        final previousStart = previousEnd.subtract(const Duration(days: 7));
+        return _DateRange(start: previousStart, endExclusive: previousEnd);
+      case DashboardTimeFilter.allTime:
+        return null;
+    }
+  }
+
+  bool _isInDateRange(
+    DateTime value,
+    _DateRange? range, {
+    bool includeAllIfNull = true,
+  }) {
+    if (range == null) {
+      return includeAllIfNull;
+    }
+    return !value.isBefore(range.start) && value.isBefore(range.endExclusive);
   }
 
   Future<List<_FirestoreRecord>> _loadOrderLikeDocs(String restaurantId) async {
@@ -280,8 +363,13 @@ class OwnerDashboardRepository {
     final createdAt = _readDate(data, const [
       'created_at',
       'createdAt',
+      'created',
+      'created_on',
+      'createdOn',
       'timestamp',
+      'timestamp_ms',
       'date',
+      'time',
       'ordered_at',
       'orderedAt',
       'paid_at',
@@ -312,6 +400,10 @@ class OwnerDashboardRepository {
           'total',
           'total_amount',
           'totalAmount',
+          'total_price',
+          'totalPrice',
+          'price_total',
+          'priceTotal',
           'amount',
           'paid_amount',
           'paidAmount',
@@ -560,10 +652,6 @@ class OwnerDashboardRepository {
     }
   }
 
-  bool _isWithinRange(DateTime value, DateTime start, DateTime endExclusive) {
-    return !value.isBefore(start) && value.isBefore(endExclusive);
-  }
-
   String _normalizeProductKey(String value) {
     return value.trim().toLowerCase();
   }
@@ -720,4 +808,11 @@ class _ProductAccumulator {
   final String name;
   int quantity = 0;
   double revenue = 0;
+}
+
+class _DateRange {
+  const _DateRange({required this.start, required this.endExclusive});
+
+  final DateTime start;
+  final DateTime endExclusive;
 }
